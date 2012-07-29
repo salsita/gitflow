@@ -42,7 +42,7 @@
 #
 
 try:
-    from gitflow.bin import main
+    from gitflow.bin import main, GitCommandError
     from gitflow.exceptions import GitflowError
     main()
 except ImportError:
@@ -55,5 +55,5 @@ except ImportError:
     sys.stderr.write("    - easy_install gitflow    (requires setuptools)\n")
     sys.stderr.write("    - cd /path/to/gitflow && python setup.py install\n")
     sys.stderr.write("\n")
-except GitflowError, e:
+except (GitflowError, GitCommandError), e:
     raise SystemExit('Error: %s' %e)

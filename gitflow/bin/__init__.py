@@ -22,7 +22,7 @@ git-flow
 
 import argparse
 
-from gitflow.core import GitFlow, info
+from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
 from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
@@ -656,5 +656,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except GitflowError, e:
+    except (GitflowError, GitCommandError), e:
         raise SystemExit('Error: %s' %e)
