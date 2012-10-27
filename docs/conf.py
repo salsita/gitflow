@@ -211,6 +211,30 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'git-flow', u'git-flow Documentation',
-     [u'Vincent Driessen'], 1)
+    ('git-flow', 'git-flow', u'git-flow Documentation',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-status', 'git-flow-status',
+     u'Show some status for your gitflow.',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-init', 'git-flow-init',
+     u'Initialize a repository for gitflow.',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-feature', 'git-flow-feature',
+     u'Manage your gitflow feature branches',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-release', 'git-flow-release',
+     u'Manage your gitflow release branches',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-hotfix', 'git-flow-hotfix',
+     u'Manage your gitflow hotfix branches',
+     [u'Hartmut Goebel'], 1),
+
+    ('git-flow-support', 'git-flow-support',
+     u'Manage your gitflow support branches',
+     [u'Hartmut Goebel'], 1),
 ]
