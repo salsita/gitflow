@@ -92,10 +92,10 @@ class InitCommand(GitFlowCommand):
         p = parent.add_parser('init',
                               help='Initialize a repository for gitflow.')
         p.add_argument('-f', '--force', action='store_true',
-                       help='force reinitialization of the gitflow preferences')
+                       help='Force reinitialization of the gitflow preferences.')
         p.add_argument('-d', '--defaults', action='store_true',
                        dest='use_defaults',
-                       help='use default branch naming conventions and prefixes')
+                       help='Use default branch naming conventions and prefixes.')
         p.set_defaults(func=cls.run)
         return p
 
@@ -124,7 +124,9 @@ class FeatureCommand(GitFlowCommand):
     #- list
     @classmethod
     def register_list(cls, parent):
-        p = parent.add_parser('list', help='List all feature branches.')
+        p = parent.add_parser('list',
+                              help='List all existing feature branches '
+                              'in the local repository.')
         p.set_defaults(func=cls.run_list)
         p.add_argument('-v', '--verbose', action='store_true',
                 help='Be verbose (more output).')
@@ -279,7 +281,7 @@ class FeatureCommand(GitFlowCommand):
                 'Defaults to the current branch, if it is a feature branch.')
         # :todo: implement --prefix
         #p.add-argument('-p', '--prefix',
-        #               help='alternative remote feature branch name prefix')
+        #               help='Alternative remote feature branch name prefix.')
 
     @staticmethod
     def run_pull(args):
@@ -316,7 +318,7 @@ class ReleaseCommand(GitFlowCommand):
     def register_parser(cls, parent):
         p = parent.add_parser('release', help='Manage your release branches.')
         p.add_argument('-v', '--verbose', action='store_true',
-           help='be verbose (more output)')
+           help='Be verbose (more output).')
         sub = p.add_subparsers(title='Actions')
         cls.register_list(sub)
         cls.register_start(sub)
@@ -327,7 +329,9 @@ class ReleaseCommand(GitFlowCommand):
     #- list
     @classmethod
     def register_list(cls, parent):
-        p = parent.add_parser('list', help='List all release branches.')
+        p = parent.add_parser('list',
+                              help='Lists all existing release branches '
+                              'in the local repository.')
         p.set_defaults(func=cls.run_list)
         p.add_argument('-v', '--verbose', action='store_true',
                 help='Be verbose (more output).')
@@ -378,24 +382,24 @@ class ReleaseCommand(GitFlowCommand):
         p = parent.add_parser('finish', help='Finish a release branch.')
         p.set_defaults(func=cls.run_finish)
         p.add_argument('-F', '--fetch', action='store_true',
-                help='fetch from origin before performing local operation.')
+                help='Fetch from origin before performing local operation.')
         p.add_argument('-p', '--push', action='store_true',
                        #:todo: get "origin" from config
-                       help="push to origin after performing finish")
+                       help="Push to origin after performing finish.")
         p.add_argument('-k', '--keep', action='store_true',
-                help='keep branch after performing finish.')
+                help='Keep branch after performing finish.')
         p.add_argument('version', nargs='?')
 
         g = p.add_argument_group('tagging options')
         g.add_argument('-n', '--notag', action='store_true',
-                       help="don't tag this release")
+                       help="Don't tag this release.")
         g.add_argument('-m', '--message',
-                       help="use the given tag message")
+                       help="Use the given tag message.")
         g.add_argument('-s', '--sign', action='store_true',
-                help="sign the release tag cryptographically")
+                help="Sign the release tag cryptographically.")
         g.add_argument('-u', '--signingkey',
-                help="use the given GPG-key for the digital signature "
-                     "instead of the default git uses (implies -s)")
+                help="Use the given GPG-key for the digital signature "
+                     "instead of the default git uses (implies -s).")
 
     @staticmethod
     def run_finish(args):
@@ -461,7 +465,7 @@ class HotfixCommand(GitFlowCommand):
     def register_parser(cls, parent):
         p = parent.add_parser('hotfix', help='Manage your hotfix branches.')
         p.add_argument('-v', '--verbose', action='store_true',
-           help='be verbose (more output)')
+           help='Be verbose (more output).')
         sub = p.add_subparsers(title='Actions')
         cls.register_list(sub)
         cls.register_start(sub)
@@ -471,7 +475,9 @@ class HotfixCommand(GitFlowCommand):
     #- list
     @classmethod
     def register_list(cls, parent):
-        p = parent.add_parser('list', help='List all hotfix branches.')
+        p = parent.add_parser('list',
+                              help='Lists all existing hotfix branches '
+                              'in the local repository.')
         p.set_defaults(func=cls.run_list)
         p.add_argument('-v', '--verbose', action='store_true',
                 help='Be verbose (more output).')
@@ -527,24 +533,24 @@ class HotfixCommand(GitFlowCommand):
         p = parent.add_parser('finish', help='Finish a hotfix branch.')
         p.set_defaults(func=cls.run_finish)
         p.add_argument('-F', '--fetch', action='store_true',
-                help='fetch from origin before performing local operation.')
+                help='Fetch from origin before performing local operation.')
         p.add_argument('-p', '--push', action='store_true',
                        #:todo: get "origin" from config
-                       help="push to origin after performing finish")
+                       help="Push to origin after performing finish.")
         p.add_argument('-k', '--keep', action='store_true',
-                help='keep branch after performing finish.')
+                help='Keep branch after performing finish.')
         p.add_argument('version', nargs='?')
 
         g = p.add_argument_group('tagging options')
         g.add_argument('-n', '--notag', action='store_true',
-                       help="don't tag this hotfix")
+                       help="Don't tag this hotfix.")
         g.add_argument('-m', '--message',
-                       help="use the given tag message")
+                       help="Use the given tag message.")
         g.add_argument('-s', '--sign', action='store_true',
-                help="sign the hotfix tag cryptographically")
+                help="Sign the hotfix tag cryptographically.")
         g.add_argument('-u', '--signingkey',
-                help="use this given GPG-key for the digital signature "
-                     "instead of the default git uses (implies -s)")
+                help="Use this given GPG-key for the digital signature "
+                     "instead of the default git uses (implies -s).")
 
     @staticmethod
     def run_finish(args):
@@ -589,7 +595,7 @@ class SupportCommand(GitFlowCommand):
     def register_parser(cls, parent):
         p = parent.add_parser('support', help='Manage your support branches.')
         p.add_argument('-v', '--verbose', action='store_true',
-           help='be verbose (more output)')
+           help='Be verbose (more output).')
         sub = p.add_subparsers(title='Actions')
         cls.register_list(sub)
         cls.register_start(sub)
@@ -597,7 +603,9 @@ class SupportCommand(GitFlowCommand):
     #- list
     @classmethod
     def register_list(cls, parent):
-        p = parent.add_parser('list', help='List all support branches.')
+        p = parent.add_parser('list',
+                              help='Lists all existing support branches '
+                              'in the local repository.')
         p.set_defaults(func=cls.run_list)
         p.add_argument('-v', '--verbose', action='store_true',
                 help='Be verbose (more output).')
