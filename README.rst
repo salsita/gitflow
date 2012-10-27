@@ -134,3 +134,13 @@ Creating feature/release/hotfix/support branches
   
   For support branches, the `<base>` arg must be a commit on `master`.
 
+
+History of the Project
+=========================
+
+gitflow was originally developed by Vincent Driessen as a set of
+shell-scripts. In Juni 2007 he started a Python rewrite but did not
+finish it. In February 2012 Hartmut Goebel started completing the
+Python rewrite and asked Vincent to pull his changes. But in June 2012
+Vincent closed the pull-request and deleted his `python-rewrite`
+branch. So Hartmut decided to release the Python rewrite on his own.
