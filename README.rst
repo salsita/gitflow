@@ -16,14 +16,14 @@ Jeff Kreeftmeijer's blog post http://jeffkreeftmeijer.com/2010/why-arent-you-usi
 Or have a look at one of these screen casts:
 
 * `How to use a scalable Git branching model called git-flow
-  http://buildamodule.com/video/change-management-and-version-control-deploying-releases-features-and-fixes-with-git-how-to-use-a-scalable-git-branching-model-called-gitflow`_
+  <http://buildamodule.com/video/change-management-and-version-control-deploying-releases-features-and-fixes-with-git-how-to-use-a-scalable-git-branching-model-called-gitflow>`_
   (by Build a Module)
 
-* `A short introduction to git-flow http://vimeo.com/16018419`_
+* `A short introduction to git-flow <http://vimeo.com/16018419>`_
   (by Mark Derricutt)
 
 * `On the path with git-flow
-  http://codesherpas.com/screencasts/on_the_path_gitflow.mov`_
+  <http://codesherpas.com/screencasts/on_the_path_gitflow.mov>`_
   (by Dave Bock)
 
 
@@ -43,11 +43,11 @@ Or, if you'd like to use `pip` instead::
 Integration with your shell
 -----------------------------
 
-For those who use the `Bash http://www.gnu.org/software/bash/`_ or
-`ZSH http://www.zsh.org`_ shell, please check out the excellent work
+For those who use the `Bash <http://www.gnu.org/software/bash/>`_ or
+`ZSH <http://www.zsh.org>`_ shell, please check out the excellent work
 on the
-`git-flow-completion http://github.com/bobthecow/git-flow-completion`_
-project by `bobthecow http://github.com/bobthecow`_. It offers
+`git-flow-completion <http://github.com/bobthecow/git-flow-completion>`_
+project by `bobthecow <http://github.com/bobthecow>`_. It offers
 tab-completion for all git-flow subcommands and branch names.
 
 
@@ -60,7 +60,7 @@ very welcome and I encourage you to use the `Issues list
 feedback.
 
 Feel free to fork this repo and to commit your additions. For a list
-of all contributors, please see the `AUTHORS<AUTHORS.txt>`_ file.
+of all contributors, please see the `AUTHORS <AUTHORS.txt>`_ file.
 
 You will need `unittest2` to run the tests.
 
