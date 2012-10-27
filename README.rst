@@ -7,6 +7,26 @@ repository operations for Vincent Driessen's
 `branching model <http://nvie.com/git-model>`_.
 
 
+Getting started
+================
+
+For the best introduction to get started with `git flow`, please read
+Jeff Kreeftmeijer's blog post http://jeffkreeftmeijer.com/2010/why-arent-you-using-git-flow.
+
+Or have a look at one of these screen casts:
+
+* `How to use a scalable Git branching model called git-flow
+  http://buildamodule.com/video/change-management-and-version-control-deploying-releases-features-and-fixes-with-git-how-to-use-a-scalable-git-branching-model-called-gitflow`_
+  (by Build a Module)
+
+* `A short introduction to git-flow http://vimeo.com/16018419`_
+  (by Mark Derricutt)
+
+* `On the path with git-flow
+  http://codesherpas.com/screencasts/on_the_path_gitflow.mov`_
+  (by Dave Bock)
+
+
 Installing git-flow
 ====================
 
