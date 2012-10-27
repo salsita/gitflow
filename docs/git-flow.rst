@@ -34,6 +34,7 @@ Subcommands
 
     :version:      Show the version of gitflow.
     :status:       Show some status.
+
     :init:         Initialize a repository for gitflow.
     :feature:      Manage your feature branches.
     :release:      Manage your release branches.
