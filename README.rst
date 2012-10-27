@@ -76,7 +76,7 @@ modifications to the community, preferably in a Github fork, of
 course.
 
 
-Typical usage
+git flow usage
 ==================
 
 Initialization
@@ -84,13 +84,15 @@ Initialization
 
 To initialize a new repo with the basic branch structure, use::
   
-		git flow init
+		git flow init [-d]
   
 This will then interactively prompt you with some questions on which
 branches you would like to use as development and production branches,
 and how you would like your prefixes be named. You may simply press
 Return on any of those questions to accept the (sane) default
 suggestions.
+
+The `-d` flag will accept all defaults.
 
 
 Creating feature/release/hotfix/support branches
@@ -103,6 +105,11 @@ Creating feature/release/hotfix/support branches
   		git flow feature finish <name>
   
   For feature branches, the `<base>` arg must be a commit on `develop`.
+
+* To push/pull a feature branch to the remote repository, use::
+
+  		git flow feature publish <name>
+  		git flow feature pull <remote> <name>
 
 * To list/start/finish release branches, use::
   
