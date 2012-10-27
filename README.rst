@@ -2,8 +2,9 @@
 git-flow
 ========
 
-A collection of Git extensions to provide high-level repository operations
-for Vincent Driessen's `branching model <http://nvie.com/git-model>`_.
+Pure-Python implementation of Git extensions to provide high-level
+repository operations for Vincent Driessen's
+`branching model <http://nvie.com/git-model>`_.
 
 
 Installing git-flow
