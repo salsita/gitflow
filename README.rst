@@ -56,7 +56,7 @@ Please help out
 
 This project is still under development. Feedback and suggestions are
 very welcome and I encourage you to use the `Issues list
-<http://github.com/nvie/gitflow/issues>`_ on Github to provide that
+<http://github.com/htgoebel/gitflow/issues>`_ on Github to provide that
 feedback.
 
 Feel free to fork this repo and to commit your additions. For a list
