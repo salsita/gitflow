@@ -2,8 +2,29 @@
 git-flow
 ========
 
-A collection of Git extensions to provide high-level repository operations
-for Vincent Driessen's `branching model <http://nvie.com/git-model>`_.
+Pure-Python implementation of Git extensions to provide high-level
+repository operations for Vincent Driessen's
+`branching model <http://nvie.com/git-model>`_.
+
+
+Getting started
+================
+
+For the best introduction to get started with `git flow`, please read
+Jeff Kreeftmeijer's blog post http://jeffkreeftmeijer.com/2010/why-arent-you-using-git-flow.
+
+Or have a look at one of these screen casts:
+
+* `How to use a scalable Git branching model called git-flow
+  http://buildamodule.com/video/change-management-and-version-control-deploying-releases-features-and-fixes-with-git-how-to-use-a-scalable-git-branching-model-called-gitflow`_
+  (by Build a Module)
+
+* `A short introduction to git-flow http://vimeo.com/16018419`_
+  (by Mark Derricutt)
+
+* `On the path with git-flow
+  http://codesherpas.com/screencasts/on_the_path_gitflow.mov`_
+  (by Dave Bock)
 
 
 Installing git-flow
@@ -11,13 +32,23 @@ Installing git-flow
 
 You can install `git-flow`, using::
 
-	easy_install gitflow
+    easy_install gitflow
 
 Or, if you'd like to use `pip` instead::
 
-	pip install gitflow
+    pip install gitflow
 
-git-flow requires at least Python 2.5.
+`git-flow` requires at least Python 2.5.
+
+Integration with your shell
+-----------------------------
+
+For those who use the `Bash http://www.gnu.org/software/bash/`_ or
+`ZSH http://www.zsh.org`_ shell, please check out the excellent work
+on the
+`git-flow-completion http://github.com/bobthecow/git-flow-completion`_
+project by `bobthecow http://github.com/bobthecow`_. It offers
+tab-completion for all git-flow subcommands and branch names.
 
 
 Please help out
@@ -28,35 +59,40 @@ very welcome and I encourage you to use the `Issues list
 <http://github.com/nvie/gitflow/issues>`_ on Github to provide that
 feedback.
 
-Feel free to fork this repo and to commit your additions. For a list of all
-contributors, please see the `AUTHORS <AUTHORS.txt>`_ file.
+Feel free to fork this repo and to commit your additions. For a list
+of all contributors, please see the `AUTHORS<AUTHORS.txt>`_ file.
 
 You will need `unittest2` to run the tests.
+
 
 License terms
 ==================
 
-git-flow is published under the liberal terms of the BSD License, see the
-`LICENSE <LICENSE.txt>`_ file. Although the BSD License does not require you to share
-any modifications you make to the source code, you are very much encouraged and
-invited to contribute back your modifications to the community, preferably
-in a Github fork, of course.
+git-flow is published under the liberal terms of the BSD License, see
+the `LICENSE <LICENSE.txt>`_ file. Although the BSD License does not
+require you to share any modifications you make to the source code,
+you are very much encouraged and invited to contribute back your
+modifications to the community, preferably in a Github fork, of
+course.
 
 
-Typical usage
+git flow usage
 ==================
 
 Initialization
 ---------------------
 
-To initialize a new repo with the basic branch structure, use:
+To initialize a new repo with the basic branch structure, use::
   
-		git flow init
+    git flow init [-d]
   
-This will then interactively prompt you with some questions on which branches
-you would like to use as development and production branches, and how you
-would like your prefixes be named. You may simply press Return on any of
-those questions to accept the (sane) default suggestions.
+This will then interactively prompt you with some questions on which
+branches you would like to use as development and production branches,
+and how you would like your prefixes be named. You may simply press
+Return on any of those questions to accept the (sane) default
+suggestions.
+
+The `-d` flag will accept all defaults.
 
 
 Creating feature/release/hotfix/support branches
@@ -64,32 +100,37 @@ Creating feature/release/hotfix/support branches
 
 * To list/start/finish feature branches, use::
   
-  		git flow feature
-  		git flow feature start <name> [<base>]
-  		git flow feature finish <name>
+      git flow feature
+      git flow feature start <name> [<base>]
+      git flow feature finish <name>
   
   For feature branches, the `<base>` arg must be a commit on `develop`.
 
+* To push/pull a feature branch to the remote repository, use::
+
+      git flow feature publish <name>
+      git flow feature pull <remote> <name>
+
 * To list/start/finish release branches, use::
   
-  		git flow release
-  		git flow release start <release> [<base>]
-  		git flow release finish <release>
+      git flow release
+      git flow release start <release> [<base>]
+      git flow release finish <release>
   
   For release branches, the `<base>` arg must be a commit on `develop`.
   
 * To list/start/finish hotfix branches, use::
   
-  		git flow hotfix
-  		git flow hotfix start <release> [<base>]
-  		git flow hotfix finish <release>
+      git flow hotfix
+      git flow hotfix start <release> [<base>]
+      git flow hotfix finish <release>
   
   For hotfix branches, the `<base>` arg must be a commit on `master`.
 
 * To list/start support branches, use::
   
-  		git flow support
-  		git flow support start <release> <base>
+      git flow support
+      git flow support start <release> <base>
   
   For support branches, the `<base>` arg must be a commit on `master`.
 
