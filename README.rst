@@ -40,6 +40,16 @@ Or, if you'd like to use `pip` instead::
 
 `git-flow` requires at least Python 2.5.
 
+Integration with your shell
+-----------------------------
+
+For those who use the `Bash http://www.gnu.org/software/bash/`_ or
+`ZSH http://www.zsh.org`_ shell, please check out the excellent work
+on the
+`git-flow-completion http://github.com/bobthecow/git-flow-completion`_
+project by `bobthecow http://github.com/bobthecow`_. It offers
+tab-completion for all git-flow subcommands and branch names.
+
 
 Please help out
 ==================
