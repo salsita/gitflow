@@ -1,0 +1,10 @@
+Authors are (ordered by first commit date):
+
+- Hartmut Goebel
+- Vincent Driessen
+- Benedikt Böhm
+- Daniel Truemper
+- Jason L. Shiffer
+- Randy Merrill
+- Sebastian Thiel
+- Peter van der Does

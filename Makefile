@@ -1,29 +1,46 @@
-prefix=/usr/local
+#
+# This file is part of `gitflow`.
+# Copyright (c) 2010-2011 Vincent Driessen
+# Copyright (c) 2012 Hartmut Goebel
+# Distributed under a BSD-like license. For full terms see the file LICENSE.txt
+#
 
-# files that need mode 755
-EXEC_FILES=git-flow
+all: cover
 
-# files that need mode 644
-SCRIPT_FILES =git-flow-init
-SCRIPT_FILES+=git-flow-feature
-SCRIPT_FILES+=git-flow-hotfix
-SCRIPT_FILES+=git-flow-release
-SCRIPT_FILES+=git-flow-support
-SCRIPT_FILES+=git-flow-version
-SCRIPT_FILES+=gitflow-common
-SCRIPT_FILES+=gitflow-shFlags
+doc:
+	cd docs && make html
 
-all:
-	@echo "usage: make install"
-	@echo "       make uninstall"
+clean-docs:
+	cd docs && make clean
 
-install:
-	@test -f gitflow-shFlags || (echo "Run 'git submodule init && git submodule update' first." ; exit 1 )
-	install -d -m 0755 $(prefix)/bin
-	install -m 0755 $(EXEC_FILES) $(prefix)/bin
-	install -m 0644 $(SCRIPT_FILES) $(prefix)/bin
+clean-files:
+	find . -name '*.py[co]' -exec rm {} \;
+	rm -rf *.egg *.egg-info
+	rm nosetests.xml *.egg-lnk pip-log.txt
 
-uninstall:
-	test -d $(prefix)/bin && \
-	cd $(prefix)/bin && \
-	rm -f $(EXEC_FILES) $(SCRIPT_FILES)
+clean: clean-docs clean-files
+
+clean-all: clean-tox clean
+	rm -rf build dist .coverage
+
+clean-tox:
+	rm -rf .tox
+
+xunit-test:
+	nosetests --with-xunit
+
+test:
+	nosetests --with-spec --spec-color
+
+test-dist:
+	PIP_DOWNLOAD_CACHE=~/Projects/pkgrepo/pkgs
+	tox
+
+cover:
+	nosetests --with-coverage3 --cover-package=gitflow --with-spec --spec-color
+
+dump-requirements:
+	pip freeze -l > .requirements
+
+install-requirements:
+	pip install -r .requirements

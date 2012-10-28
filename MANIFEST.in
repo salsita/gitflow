@@ -1,0 +1,5 @@
+include README.rst DEVELOPERS.rst AUTHORS.txt LICENSE.txt
+include tox.ini
+
+include docs/conf.py docs/Makefile docs/make.bat
+include docs/*.rst docs/reference/*.rst

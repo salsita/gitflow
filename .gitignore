@@ -1,0 +1,18 @@
+# Temporary editor and backup files
+*~
+.\#*
+\#*#
+*.swp
+
+# Python junk
+*.py[co]
+/*.egg
+/*.egg-info
+/build
+/dist
+/pip-log.txt
+/.coverage
+/.achievements
+/.tox
+/nosetests.xml
+/docs/_build
