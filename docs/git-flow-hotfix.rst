@@ -6,6 +6,7 @@
 git flow hotfix
 ==========================
 .. |BRANCH| replace:: hotfix
+.. |`BRANCH`| replace:: `hotfix`
 .. |BASE| replace:: `master`
 
 

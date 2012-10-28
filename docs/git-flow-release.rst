@@ -6,6 +6,7 @@
 git flow release
 ==========================
 .. |BRANCH| replace:: release
+.. |`BRANCH`| replace:: `release`
 .. |BASE| replace:: `master`
 
 

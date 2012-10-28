@@ -6,6 +6,7 @@
 git flow feature
 ==========================
 .. |BRANCH| replace:: feature
+.. |`BRANCH`| replace:: `feature`
 .. |BASE| replace:: `develop`
 
 

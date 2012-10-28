@@ -6,6 +6,7 @@
 git flow support
 ==========================
 .. |BRANCH| replace:: support
+.. |`BRANCH`| replace:: `support`
 .. |BASE| replace:: `master`
 
 
