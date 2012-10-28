@@ -8,9 +8,12 @@ git flow |BRANCH| finish - Finish a |BRANCH| branch
 Synopsis
 -----------
 
-``git flow |BRANCH| finish`` [-h] [-F] [-p] [-k] [-n] [-m MESSAGE] [-s]
-                             [-u SIGNINGKEY]
-                             [version]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `finish` [-F|--fetch] [-p|--push] [-k|--keep]
+                    [-n|--notag] [-m MESSAGE|--message MESSAGE]
+                    [-s|--sign] [-u SIGNINGKEY|--signingkey SIGNINGKEY]
+                    [version]
 
 
 Description

@@ -8,7 +8,9 @@ git flow |BRANCH| track - Track a |BRANCH| branch from a remote peer
 Synopsis
 -----------
 
-``git flow |BRANCH| track`` [-h] name
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `track` name
 
 
 Description

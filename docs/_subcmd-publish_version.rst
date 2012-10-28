@@ -8,7 +8,9 @@ git flow |BRANCH| publish - Publish a |BRANCH| branch to `origin`
 Synopsis
 -----------
 
-``git flow |BRANCH| publish`` [-h] [version]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `publish` [version]
 
 
 Description

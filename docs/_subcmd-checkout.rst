@@ -8,7 +8,9 @@ git flow |BRANCH| checkout - Check out a |BRANCH| branch
 Synopsis
 -----------
 
-``git flow |BRANCH| checkout`` [-h] nameprefix
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `checkout` nameprefix
 
 
 Description

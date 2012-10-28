@@ -8,7 +8,9 @@ git flow |BRANCH| start - Start a new |BRANCH| branch
 Synopsis
 -----------
 
-``git flow |BRANCH| start`` [-h] [-F] version [base]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `start` [-F|--fetch] version [base]
 
 
 Description

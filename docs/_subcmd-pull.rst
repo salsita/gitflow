@@ -8,7 +8,9 @@ git flow |BRANCH| pull - Pull a |BRANCH| branch from a remote peer
 Synopsis
 -----------
 
-``git flow |BRANCH| pull`` [-h] remote [name]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `pull` remote [name]
 
 
 Description

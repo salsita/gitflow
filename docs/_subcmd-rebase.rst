@@ -8,7 +8,9 @@ git flow |BRANCH| rebase - Rebase a |BRANCH| branch on top of |BASE|
 Synopsis
 -----------
 
-``git flow |BRANCH| rebase`` [-h] [nameprefix]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `rebase` [nameprefix]
 
 
 Description

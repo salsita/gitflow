@@ -8,7 +8,10 @@ git flow |BRANCH| finish - Finish a |BRANCH| branch
 Synopsis
 -----------
 
-``git flow |BRANCH| finish`` [-h] [-F] [-r] [-k] [-D] [nameprefix]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `finish` [-F|--fetch] [-r|--rebase]
+                    [-k|--keep] [-D|--force-delete] [nameprefix]
 
 
 Description

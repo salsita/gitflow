@@ -8,7 +8,9 @@ git flow |BRANCH| diff - Show a diff since this |BRANCH| branched off
 Synopsis
 -----------
 
-``git flow |BRANCH| diff`` [-h] [nameprefix]
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| `diff` [nameprefix]
 
 
 Description
