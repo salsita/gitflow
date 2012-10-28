@@ -2,7 +2,6 @@
 
 .. include:: _manpage-header.rst
 
-
 ==========================
 git flow init
 ==========================
@@ -14,7 +13,7 @@ Initialize the repository for git flow usage
 Synopsis
 ------------
 
-``git flow init`` [-h] [-f] [-d]
+`git flow init` [-f|--force] [-d|--defaults]
 
 
 Description

@@ -11,8 +11,10 @@ git flow
 Synopsis
 -----------
 
-``git flow`` [-h]
-``git flow`` subcommand [-h] [options] [arguments]
+.. parsed-literal::
+
+  ``git flow`` [-h]
+  ``git flow`` subcommand [-h] [options]... [arguments]...
 
 
 Description

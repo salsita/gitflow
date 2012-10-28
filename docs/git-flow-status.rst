@@ -5,19 +5,21 @@
 ==========================
 git flow status
 ==========================
-
+-------------------------------------------------------------
+Show branch status
+-------------------------------------------------------------
 
 
 Synopsis
 -----------
 
-``git flow status``
+`git flow status`
 
 
 Description
 -----------
 
-Show some status about the current 
+Show some status about the current branches.
 
 
 Examples
