@@ -1,6 +1,5 @@
 .. -*- mode: rst ; ispell-local-dictionary: "american" -*-
 
-.. include:: _definitions.rst
 .. include:: _manpage-header.rst
 
 .. |BRANCH| replace:: release

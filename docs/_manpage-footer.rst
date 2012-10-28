@@ -5,4 +5,4 @@ See also
 
 ``git flow``\(1)
 
-Project Homepage |ProjectHomepage|
+Project Homepage https://github.com/htgoebel/gitflow

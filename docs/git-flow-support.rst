@@ -1,7 +1,5 @@
 .. -*- mode: rst ; ispell-local-dictionary: "american" -*-
 
-.. include:: _definitions.rst
-
 .. |BRANCH| replace:: support
 .. |BASE| replace:: `master`
 
