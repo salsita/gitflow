@@ -1,7 +1,7 @@
 .. -*- mode: rst ; ispell-local-dictionary: "american" -*-
 
 See also
-=============
++++++++++++++++
 
 ``git flow``\(1)
 
