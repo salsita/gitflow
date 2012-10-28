@@ -17,6 +17,12 @@ Synopsis
 +++++++++++++++
 
 .. parsed-literal::
+
+  `git flow` |`BRANCH`| [-h|--help]
+  `git flow` |`BRANCH`| `list` [-v|--verbose]
+  `git flow` |`BRANCH`| `start` [-F|--fetch] name [base]
+
+
 .. contents:: Subcommands
     :depth: 1
     :local:

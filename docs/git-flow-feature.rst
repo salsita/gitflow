@@ -16,6 +16,20 @@ Manage your |BRANCH| branches
 Synopsis
 +++++++++++++++
 
+.. parsed-literal::
+
+  `git flow` |`BRANCH`| [-h|--help]
+  `git flow` |`BRANCH`| `list` [-v|--verbose]
+  `git flow` |`BRANCH`| `finish` [-F|--fetch] [-r|--rebase]
+                    [-k|--keep] [-D|--force-delete] [nameprefix]
+  `git flow` |`BRANCH`| `checkout` nameprefix
+  `git flow` |`BRANCH`| `diff` [nameprefix]
+  `git flow` |`BRANCH`| `rebase` [nameprefix]
+  `git flow` |`BRANCH`| `publish` [nameprefix]
+  `git flow` |`BRANCH`| `pull` remote [name]
+  `git flow` |`BRANCH`| `track` name
+
+
 .. contents:: Subcommands
     :depth: 1
     :local:
