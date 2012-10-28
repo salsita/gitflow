@@ -17,10 +17,7 @@ except ImportError:
 
 import gitflow as distmeta
 
-if os.path.exists("README.rst"):
-    long_description = codecs.open('README.rst', "r", "utf-8").read()
-else:
-    long_description = "See http://github.com/htgoebel/gitflow/tree/master"
+long_description = codecs.open('README.rst', "r", "utf-8").read()
 
 install_requires = ['GitPython>=0.3.2c1', 'argparse']
 
