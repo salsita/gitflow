@@ -25,20 +25,20 @@ Driessen's branching model.
 Options
 -------------
 
-  -h, --help       Show help message and exit.
+  -h, --help       Show help message and exit
 
 
 Subcommands
 -------------
 
-    :version:      Show the version of gitflow.
-    :status:       Show some status.
+    :version:      Show the version of gitflow
+    :status:       Show some status
 
-    :init:         Initialize a repository for gitflow.
-    :feature:      Manage your feature branches.
-    :release:      Manage your release branches.
-    :hotfix:       Manage your hotfix branches.
-    :support:      Manage your support branches.
+    :init:         Initialize a repository for gitflow
+    :feature:      Manage your feature branches
+    :release:      Manage your release branches
+    :hotfix:       Manage your hotfix branches
+    :support:      Manage your support branches
 
 
 .. include:: _manpage-footer.rst
