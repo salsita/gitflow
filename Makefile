@@ -8,10 +8,10 @@
 all: cover
 
 doc:
-	cd docs && make html
+	make -C docs html
 
 clean-docs:
-	cd docs && make clean
+	make -C docs clean
 
 clean-files:
 	find . -name '*.py[co]' -exec rm {} \;
