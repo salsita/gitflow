@@ -16,7 +16,7 @@ Synopsis
 Description
 -----------
 
-Start new |BRANCH| `name`, optionally basing it on `base` instead
+Start new |BRANCH| ``name``, optionally basing it on ``base`` instead
 of |BASE|.
 
 

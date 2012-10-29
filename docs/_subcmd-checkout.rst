@@ -16,7 +16,7 @@ Synopsis
 Description
 -----------
 
-If exactly one |BRANCH| branch starts with `nameprefix`, check out
+If exactly one |BRANCH| branch starts with ``nameprefix``, check out
 (switch to) that branch.
 
 

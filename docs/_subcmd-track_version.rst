@@ -16,8 +16,8 @@ Synopsis
 Description
 -----------
 
-Start tracking a |BRANCH| branch, with the given version, from `origin`
-(or whatever is configured as `remote` for gitflow.)
+Start tracking a |BRANCH| branch, with the given version, from
+``origin`` (or whatever is configured as ``remote`` for gitflow.)
 
 
 Positional arguments

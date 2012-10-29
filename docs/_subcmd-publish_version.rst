@@ -16,8 +16,8 @@ Synopsis
 Description
 -----------
 
-Publish a |BRANCH| branch, with the given version, on
-`origin` (or whatever is configured as `remote` for gitflow.)
+Publish a |BRANCH| branch, with the given version, on ``origin`` (or
+whatever is configured as ``remote`` for gitflow.)
 
 
 Positional arguments

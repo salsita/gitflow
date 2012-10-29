@@ -18,11 +18,11 @@ Description
 
 Show all changes since this |BRANCH| branched off from |BASE|.
 
-If `nameprefix` is not given, diff the current branch if it is a
+If ``nameprefix`` is not given, diff the current branch if it is a
 |BRANCH| branch.
 
-If `nameprefix` is given and exactly one |BRANCH| branch starts with
-`nameprefix`, diff that one.
+If ``nameprefix`` is given and exactly one |BRANCH| branch starts with
+``nameprefix``, diff that one.
 
 
 Options

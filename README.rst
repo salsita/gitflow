@@ -10,7 +10,7 @@ repository operations for Vincent Driessen's
 Getting started
 ================
 
-For the best introduction to get started with `git flow`, please read
+For the best introduction to get started with ``git flow``, please read
 Jeff Kreeftmeijer's blog post http://jeffkreeftmeijer.com/2010/why-arent-you-using-git-flow.
 
 Or have a look at one of these screen casts:
@@ -30,15 +30,15 @@ Or have a look at one of these screen casts:
 Installing git-flow
 ====================
 
-You can install `git-flow`, using::
+You can install ``git-flow``, using::
 
     easy_install gitflow
 
-Or, if you'd like to use `pip` instead::
+Or, if you'd like to use ``pip`` instead::
 
     pip install gitflow
 
-`git-flow` requires at least Python 2.5.
+``git-flow`` requires at least Python 2.5.
 
 Integration with your shell
 -----------------------------
@@ -60,16 +60,16 @@ very welcome and I encourage you to use the `Issues list
 feedback.
 
 Feel free to fork this repo and to commit your additions. For a list
-of all contributors, please see the `AUTHORS.txt` file.
+of all contributors, please see the :file:`AUTHORS.txt`.
 
-You will need `unittest2` to run the tests.
+You will need :module:`unittest2` to run the tests.
 
 
 License terms
 ==================
 
 git-flow is published under the liberal terms of the BSD License, see
-the `LICENSE.txt` file. Although the BSD License does not
+the :file:`LICENSE.txt`. Although the BSD License does not
 require you to share any modifications you make to the source code,
 you are very much encouraged and invited to contribute back your
 modifications to the community, preferably in a Github fork, of
@@ -92,7 +92,7 @@ and how you would like your prefixes be named. You may simply press
 Return on any of those questions to accept the (sane) default
 suggestions.
 
-The `-d` flag will accept all defaults.
+The ``-d`` flag will accept all defaults.
 
 
 Creating feature/release/hotfix/support branches
@@ -104,7 +104,7 @@ Creating feature/release/hotfix/support branches
       git flow feature start <name> [<base>]
       git flow feature finish <name>
   
-  For feature branches, the `<base>` arg must be a commit on `develop`.
+  For feature branches, the ``<base>`` arg must be a commit on ``develop``.
 
 * To push/pull a feature branch to the remote repository, use::
 
@@ -117,7 +117,7 @@ Creating feature/release/hotfix/support branches
       git flow release start <release> [<base>]
       git flow release finish <release>
   
-  For release branches, the `<base>` arg must be a commit on `develop`.
+  For release branches, the ``<base>`` arg must be a commit on ``develop``.
   
 * To list/start/finish hotfix branches, use::
   
@@ -125,14 +125,14 @@ Creating feature/release/hotfix/support branches
       git flow hotfix start <release> [<base>]
       git flow hotfix finish <release>
   
-  For hotfix branches, the `<base>` arg must be a commit on `master`.
+  For hotfix branches, the ``<base>`` arg must be a commit on ``master``.
 
 * To list/start support branches, use::
   
       git flow support
       git flow support start <release> <base>
   
-  For support branches, the `<base>` arg must be a commit on `master`.
+  For support branches, the ``<base>`` arg must be a commit on ``master``.
 
 
 History of the Project
@@ -142,7 +142,7 @@ gitflow was originally developed by Vincent Driessen as a set of
 shell-scripts. In Juni 2007 he started a Python rewrite but did not
 finish it. In February 2012 Hartmut Goebel started completing the
 Python rewrite and asked Vincent to pull his changes. But in June 2012
-Vincent closed the pull-request and deleted his `python-rewrite`
+Vincent closed the pull-request and deleted his ``python-rewrite``
 branch. So Hartmut decided to release the Python rewrite on his own.
 
 

@@ -16,8 +16,8 @@ Synopsis
 Description
 -----------
 
-Start new |BRANCH| `version`, optionally basing it on `base` instead
-of |BASE|.
+Start new |BRANCH| ``version``, optionally basing it on ``base``
+instead of |BASE|.
 
 
 Options

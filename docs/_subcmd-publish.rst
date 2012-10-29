@@ -17,14 +17,14 @@ Description
 -----------
 
 Publish a |BRANCH| branch, with the given name or name-prefix, on
-`origin` (or whatever is configured as `remote` for gitflow.)
+``origin`` (or whatever is configured as ``remote`` for gitflow.)
 
 
-If `nameprefix` is not given, publish the current branch if it is a
+If ``nameprefix`` is not given, publish the current branch if it is a
 |BRANCH| branch.
 
-If `nameprefix` is given and exactly one |BRANCH| branch starts with
-`nameprefix`, publish that one.
+If ``nameprefix`` is given and exactly one |BRANCH| branch starts with
+``nameprefix``, publish that one.
 
 
 Options

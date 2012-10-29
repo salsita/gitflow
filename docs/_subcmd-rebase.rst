@@ -19,11 +19,11 @@ Description
 Rebase a |BRANCH| branch on top of |BASE| (or whatever is configured
 as |BASE| for gitflow.)
 
-If `nameprefix` is not given, rebase the current branch if it is a
+If ``nameprefix`` is not given, rebase the current branch if it is a
 |BRANCH| branch.
 
-If `nameprefix` is given and exactly one |BRANCH| branch starts with
-`nameprefix`, rebase that one.
+If ``nameprefix`` is given and exactly one |BRANCH| branch starts with
+``nameprefix``, rebase that one.
 
 
 Options

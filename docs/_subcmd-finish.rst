@@ -19,11 +19,11 @@ Description
 
 Finish an existing |BRANCH| branch.
 
-If `nameprefix` is not given, finish the current branch if it is a
+If ``nameprefix`` is not given, finish the current branch if it is a
 |BRANCH| branch.
 
-If `nameprefix` is given and exactly one |BRANCH| branch starts with
-`nameprefix`, finish that one.
+If ``nameprefix`` is given and exactly one |BRANCH| branch starts with
+``nameprefix``, finish that one.
 
 
 
