@@ -8,7 +8,7 @@
 all: cover
 
 doc:
-	make -C docs html
+	make -C docs html man
 
 clean-docs:
 	make -C docs clean
