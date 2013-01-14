@@ -1,7 +1,9 @@
 import subprocess as sub
-from gitflow.exceptions import GitflowError
-import gitflow.core
 import gitflow.pivotal as pivotal
+import reviewboard.extensions as rb_ext
+import gitflow.core as core
+
+from gitflow.exceptions import GitflowError
 
 
 def post_review(self, identifier, name, summary):
@@ -10,6 +12,7 @@ def post_review(self, identifier, name, summary):
 
     parent = find_last_patch_parent(self.develop_name(), branch.name)
     if not parent:
+        print "Could not find any merges, using full patch."
         parent = get_branch_parent(branch.name)
 
     if not parent:
@@ -19,9 +22,19 @@ def post_review(self, identifier, name, summary):
     story_id = pivotal.get_story_id_from_branch_name(branch.name)
     story = pivotal.get_story(story_id)
 
+    gitflow = core.GitFlow()
+    req = rb_ext.get_latest_review_request_for_branch(
+        gitflow.get('reviewboard.server'), branch.name)
+
     cmd = ['post-review', '--branch', branch.name,
-        '--guess-description', '--summary', "'%s'" % story['story']['name'],
+        '--guess-description',
         '--revision-range', '%s:%s' % (parent, branch.name)]
+    if req:
+        # Update an existing request.
+        cmd += ['-r', str(req['id'])]
+    else:
+        # Create a new request.
+        cmd += ['--summary', "'%s'" % story['story']['name']]
 
     print "Posting a review using command: %s" % ' '.join(cmd)
     sub.call(cmd)
@@ -57,4 +70,4 @@ def find_last_patch_parent(develop_name, branch_name):
         return lines[1].split(' ')[0]
 
 
-gitflow.core.GitFlow.post_review = post_review
+core.GitFlow.post_review = post_review

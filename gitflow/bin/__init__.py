@@ -28,8 +28,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch)
 import gitflow.pivotal as pivotal
-# This will monkeypatch `gitflow.core.
-import gitflow.reviewboard as reviewboard
+# This will monkeypatch `gitflow.core`.
+import gitflow.review
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
