@@ -28,7 +28,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch)
 import gitflow.pivotal as pivotal
-# This will monkeypatch `gitflow.core`.
+# This will monkeypatch `gitflow.core.
 import gitflow.reviewboard as reviewboard
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
@@ -196,7 +196,7 @@ class FeatureCommand(GitFlowCommand):
             [story_id, args.name] = pivotal.prompt_user_to_select_story()
         except NotInitialized:
             raise
-        pivotal.start_story(story_id)
+        pivotal.update_story(story_id, current_state='started')
         gitflow = GitFlow()
         # :fixme: Why does the sh-version not require a clean working dir?
         # :fixme: get default value for `base`
@@ -245,6 +245,16 @@ class FeatureCommand(GitFlowCommand):
                        fetch=args.fetch, rebase=args.rebase,
                        keep=args.keep, force_delete=args.force_delete,
                        tagging_info=None)
+        story_id = pivotal.get_story_id_from_branch_name(name)
+        story = pivotal.get_story(story_id)
+        if story['story']['story_type'] == 'chore':
+            labels = story['story'].get('labels', [])
+            if not 'waiting-for-review' in labels:
+                labels += ['waiting-for-review']
+                pivotal.update_story(story_id, labels=labels)
+        else:
+            pivotal.update_story(story_id, current_state='finished')
+
         gitflow.post_review('feature', name, 'foobar')
 
     #- finish

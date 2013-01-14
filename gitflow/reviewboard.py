@@ -35,5 +35,10 @@ def post_review(self, identifier, name, summary):
     print "Posting a review using command: %s" % ' '.join(cmd)
     sub.call(cmd)
 
+def find_last_patch(self, branch_name):
+    proc = sub.Popen(
+        ['git', 'reflog', 'show', self.develop_name()],
+        env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
+
 
 gitflow.core.GitFlow.post_review = post_review

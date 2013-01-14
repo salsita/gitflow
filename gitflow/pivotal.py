@@ -111,13 +111,13 @@ def get_iterations():
     return [current, backlog]
 
 
-def start_story(story_id):
+def update_story(story_id, **kwargs):
     gitflow = GitFlow()
     token = gitflow.get('workflow.token')
     project_id = gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     client.stories.update(
-        project_id=project_id, story_id=story_id, current_state='started')
+        project_id=project_id, story_id=story_id, **kwargs)
 
 def get_story(story_id):
     gitflow = GitFlow()
@@ -144,7 +144,10 @@ def colorize_string(string):
     return tmp
 
 def get_story_id_from_branch_name(branch_name):
-    match = re.match('^.+/([0-9]+)[^0-9]*$', branch_name)
+    match = re.match('^.+/([0-9]+)[/-]?.*$', branch_name)
     if not match:
-        raise GitflowError('Weird branch name format: %s' % branch_name)
+        # Gitflow identifier has already been stripped.
+        match = re.match('^([0-9]+)[/-]?.*$', branch_name)
+        if not match:
+            raise GitflowError('Weird branch name format: %s' % branch_name)
     return match.groups()[0]
