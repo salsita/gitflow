@@ -71,7 +71,7 @@ def get_tzmap():
     global _tzmap
     if _tzmap is None:
         _tzmap = {}
-        tzmap_file = pkg_resources.resource_string('busyflow.pivotal', 'tzmap.txt')
+        tzmap_file = pkg_resources.resource_string('gitflow.busyflow.pivotal', 'tzmap.txt')
         for line in tzmap_file.splitlines():
             [short_name, long_name, offset] = line.split('\t')
             _tzmap[short_name] = offset
