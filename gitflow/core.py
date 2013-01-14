@@ -314,7 +314,7 @@ class GitFlow(object):
             A :class:`BranchManager <git.branches.BranchManager>` for the given
             identifier must exist in the :attr:`self.managers`.
 
-        :param  name: 
+        :param  name:
            If the `name` is empty, see if the current branch is of
            type `identifier`. If so, returns the current branches
            short name, otherwise raises :exc:`NoSuchBranchError`.
@@ -418,7 +418,7 @@ class GitFlow(object):
         remote_branch = self.origin_name(branch)
         if remote_branch in self.branch_names(remote=True):
             if fetch:
-                repo.fetch(remote_branch)
+                self.origin().fetch(branch)
             self.require_branches_equal(branch, remote_branch)
 
     @requires_repo
