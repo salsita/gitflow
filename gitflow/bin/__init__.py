@@ -234,6 +234,9 @@ class FeatureCommand(GitFlowCommand):
                 help='Keep branch after performing finish.')
         p.add_argument('-D', '--force-delete', action='store_true',
             default=False, help='Force delete feature branch after finish.')
+        p.add_argument('-p', '--full-patch', action='store_true',
+            default=False, help='Post review for the whole branch, not just for '
+                'the last commit')
         p.add_argument('nameprefix', nargs='?')
 
     @staticmethod

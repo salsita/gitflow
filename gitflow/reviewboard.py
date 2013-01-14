@@ -8,22 +8,13 @@ def post_review(self, identifier, name, summary):
     mgr = self.managers[identifier]
     branch = mgr.by_name_prefix(name)
 
-    proc = sub.Popen(
-        ['git', 'reflog', 'show', branch.name],
-        env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
-    (out, err) = proc.communicate()
-    lines = out.strip().split('\n')
-    parent = None
-    for line in lines:
-        parts = line.split(' ')
-        if len(parts) >= 3 and (parts[2]).startswith('branch'):
-            parent = parts[0]
+    parent = find_last_patch_parent(self.develop_name(), branch.name)
     if not parent:
-        parent = lines[-1].split(' ')[0]
+        parent = get_branch_parent(branch.name)
+
     if not parent:
         raise GitflowError("Could not find parent for branch '%s'!" %
-        branch.name)
-        return
+            branch.name)
 
     story_id = pivotal.get_story_id_from_branch_name(branch.name)
     story = pivotal.get_story(story_id)
@@ -35,10 +26,35 @@ def post_review(self, identifier, name, summary):
     print "Posting a review using command: %s" % ' '.join(cmd)
     sub.call(cmd)
 
-def find_last_patch(self, branch_name):
+
+def get_branch_parent(branch_name):
     proc = sub.Popen(
-        ['git', 'reflog', 'show', self.develop_name()],
+        ['git', 'reflog', 'show', branch_name],
         env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
+    (out, err) = proc.communicate()
+    lines = out.strip().split('\n')
+    parent = None
+    for line in lines:
+        parts = line.split(' ')
+        if len(parts) >= 3 and (parts[2]).startswith('branch'):
+            parent = parts[0]
+    if not parent:
+        parent = lines[-1].split(' ')[0]
+    return parent
+
+
+def find_last_patch_parent(develop_name, branch_name):
+    proc = sub.Popen(
+        ['git', 'reflog', 'show', develop_name],
+        env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
+    (out, err) = proc.communicate()
+    lines = out.strip().split('\n')
+    lines = [l for l in lines if ("merge %s" % branch_name) in l]
+    if len(lines) < 2:
+        return None
+    else:
+        # Get the hash of the second most recent merge.
+        return lines[1].split(' ')[0]
 
 
 gitflow.core.GitFlow.post_review = post_review
