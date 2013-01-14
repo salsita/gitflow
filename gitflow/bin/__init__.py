@@ -442,6 +442,7 @@ class ReleaseCommand(GitFlowCommand):
 
     @staticmethod
     def run_start(args):
+        pivotal.show_release_summary()
         gitflow = GitFlow()
         # NB: `args.version` is required since the branch must not yet exist
         # :fixme: get default value for `base`
