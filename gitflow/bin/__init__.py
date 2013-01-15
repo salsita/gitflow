@@ -124,9 +124,6 @@ class FeatureCommand(GitFlowCommand):
         cls.register_pull(sub)
         cls.register_track(sub)
 
-        cls.register_ptselect(sub)
-        cls.register_ptfinish(sub)
-
     #- list
     @classmethod
     def register_list(cls, parent):
@@ -144,23 +141,27 @@ class FeatureCommand(GitFlowCommand):
         gitflow.list('feature', 'name', use_tagname=False,
                      verbose=args.verbose)
 
-    #- start
+    #- select
     @classmethod
     def register_start(cls, parent):
-        p = parent.add_parser('start', help='Start a new feature branch.')
+        p = parent.add_parser('start', help='Select a story in PT and create'
+            'a new feature branch.')
         p.set_defaults(func=cls.run_start)
         p.add_argument('-F', '--fetch', action='store_true',
                 help='Fetch from origin before performing local operation.')
-        p.add_argument('name', action=NotEmpty)
         p.add_argument('base', nargs='?')
 
     @staticmethod
     def run_start(args):
+        try:
+            [story_id, args.name] = pivotal.prompt_user_to_select_story()
+        except NotInitialized:
+            raise
+        pivotal.update_story(story_id, current_state='started')
         gitflow = GitFlow()
         # :fixme: Why does the sh-version not require a clean working dir?
-        # NB: `args.name` is required since the branch must not yet exist
         # :fixme: get default value for `base`
-        gitflow.start_transaction('create feature branch %s (from %s)' % \
+        gitflow.start_transaction('start feature branch %s (from %s)' % \
                 (args.name, args.base))
         try:
             branch = gitflow.create('feature', args.name, args.base,
@@ -180,99 +181,26 @@ class FeatureCommand(GitFlowCommand):
         print "     git flow feature finish", args.name
         print
 
-    #- ptselect
-    @classmethod
-    def register_ptselect(cls, parent):
-        p = parent.add_parser('ptselect', help='Select a story in PT and create'
-            'a new or switch to an existing feature branch.')
-        p.set_defaults(func=cls.run_ptselect)
-        p.add_argument('-F', '--fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
-        p.add_argument('base', nargs='?')
-
-    @staticmethod
-    def run_ptselect(args):
-        try:
-            [story_id, args.name] = pivotal.prompt_user_to_select_story()
-        except NotInitialized:
-            raise
-        pivotal.update_story(story_id, current_state='started')
-        gitflow = GitFlow()
-        # :fixme: Why does the sh-version not require a clean working dir?
-        # :fixme: get default value for `base`
-        gitflow.start_transaction('ptselect feature branch %s (from %s)' % \
-                (args.name, args.base))
-        try:
-            branch = gitflow.create('feature', args.name, args.base,
-                                    fetch=args.fetch)
-        except (NotInitialized, BaseNotOnBranch):
-            # printed in main()
-            raise
-        except Exception, e:
-            die("Could not create feature branch %r" % args.name, e)
-        print
-        print "Summary of actions:"
-        print "- A new branch", branch, "was created, based on", args.base
-        print "- You are now on branch", branch
-        print ""
-        print "Now, start committing on your feature. When done, use:"
-        print ""
-        print "     git flow feature ptfinish", args.name
-        print
-
-    #- ptfinish
-    @classmethod
-    def register_ptfinish(cls, parent):
-        p = parent.add_parser('ptfinish', help='Finish a feature branch ' +
-            '(with PTintegration).')
-        p.set_defaults(func=cls.run_ptfinish)
-        p.add_argument('-F', '--fetch', action='store_true', default=True,
-                help='Fetch from origin before performing local operation.')
-        p.add_argument('-r', '--rebase', action='store_true',
-                help='Finish branch by rebasing first.')
-        p.add_argument('-k', '--keep', action='store_true', default=True,
-                help='Keep branch after performing finish.')
-        p.add_argument('-D', '--force-delete', action='store_true',
-            default=False, help='Force delete feature branch after finish.')
-        p.add_argument('-p', '--full-patch', action='store_true',
-            default=False, help='Post review for the whole branch, not just for '
-                'the last commit')
-        p.add_argument('nameprefix', nargs='?')
-
-    @staticmethod
-    def run_ptfinish(args):
-        gitflow = GitFlow()
-        name = gitflow.nameprefix_or_current('feature', args.nameprefix)
-        gitflow.start_transaction('finishing feature branch %s' % name)
-        gitflow.finish('feature', name,
-                       fetch=args.fetch, rebase=args.rebase,
-                       keep=args.keep, force_delete=args.force_delete,
-                       tagging_info=None)
-        story_id = pivotal.get_story_id_from_branch_name(name)
-        story = pivotal.get_story(story_id)
-        if story['story']['story_type'] == 'chore':
-            labels = story['story'].get('labels', [])
-            if not 'waiting-for-review' in labels:
-                labels += ['waiting-for-review']
-                pivotal.update_story(story_id, labels=labels)
-        else:
-            pivotal.update_story(story_id, current_state='finished')
-
-        gitflow.post_review('feature', name, 'foobar')
-
     #- finish
     @classmethod
     def register_finish(cls, parent):
-        p = parent.add_parser('finish', help='Finish a feature branch.')
+        p = parent.add_parser('finish', help='Finish a feature branch ' +
+            '(with PTintegration).')
         p.set_defaults(func=cls.run_finish)
-        p.add_argument('-F', '--fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
+        #p.add_argument('-F', '--no-fetch', action='store_true', default=True,
+        #        help='Fetch from origin before performing local operation.')
         p.add_argument('-r', '--rebase', action='store_true',
                 help='Finish branch by rebasing first.')
-        p.add_argument('-k', '--keep', action='store_true',
-                help='Keep branch after performing finish.')
+        #p.add_argument('-k', '--keep', action='store_true', default=True,
+        #        help='Keep branch after performing finish.')
         p.add_argument('-D', '--force-delete', action='store_true',
-                help='Force delete feature branch after finish.')
+            default=False, help='Force delete feature branch after finish.')
+        p.add_argument('-n', '--new-review', action='store_true',
+            default=False, help='Post a new review for the whole branch, '
+                'not just for the last commit.')
+        p.add_argument('-P', '--no-push', action='store_true',
+            default=False, help='Do not push the develop branch to origin '
+            'after merging with the feature branch.')
         p.add_argument('nameprefix', nargs='?')
 
     @staticmethod
@@ -281,9 +209,12 @@ class FeatureCommand(GitFlowCommand):
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
         gitflow.start_transaction('finishing feature branch %s' % name)
         gitflow.finish('feature', name,
-                       fetch=args.fetch, rebase=args.rebase,
-                       keep=args.keep, force_delete=args.force_delete,
-                       tagging_info=None)
+                       fetch=True, rebase=args.rebase,
+                       keep=True, force_delete=args.force_delete,
+                       tagging_info=None, push=(not args.no_push))
+        story_id = pivotal.get_story_id_from_branch_name(name)
+        pivotal.finish_story(story_id)
+        gitflow.post_review('feature', name, post_new=args.new_review)
 
     #- checkout
     @classmethod
@@ -501,7 +432,7 @@ class ReleaseCommand(GitFlowCommand):
         release = gitflow.finish('release', version,
                                  fetch=args.fetch, rebase=False,
                                  keep=args.keep, force_delete=False,
-                                 tagging_info=tagging_info)
+                                 tagging_info=tagging_info, push=args.push)
 
     #- publish
     @classmethod

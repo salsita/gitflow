@@ -25,11 +25,14 @@ install_requires = [
     'setuptools',
     'xmlbuilder',
     'python-dateutil',
-    'poster'
+    'poster',
+    'simplejson',
+    'httplib2',
+    'colorama'
 ]
 
 setup(
-    name="gitflow",
+    name="salsita-gitflow",
     scripts=['bin/git-flow'],
     version=distmeta.__version__,
     description="Git extensions to provide high-level repository operations for Vincent Driessen's branching model.",
@@ -39,7 +42,8 @@ setup(
     platforms=["any"],
     license="BSD",
     packages=find_packages(),
-    package_data={'':['*.txt']},
+    package_data={'':['gitflow/busyflow/pivotal/tzmap.txt']},
+    include_package_data=True,
     install_requires=install_requires,
     zip_safe=False,
     classifiers=[

@@ -6,7 +6,7 @@ import gitflow.core as core
 from gitflow.exceptions import GitflowError
 
 
-def post_review(self, identifier, name, summary):
+def post_review(self, identifier, name, post_new):
     mgr = self.managers[identifier]
     branch = mgr.by_name_prefix(name)
 
@@ -22,19 +22,23 @@ def post_review(self, identifier, name, summary):
     story_id = pivotal.get_story_id_from_branch_name(branch.name)
     story = pivotal.get_story(story_id)
 
-    gitflow = core.GitFlow()
-    req = rb_ext.get_latest_review_request_for_branch(
-        gitflow.get('reviewboard.server'), branch.name)
-
     cmd = ['post-review', '--branch', branch.name,
         '--guess-description',
         '--revision-range', '%s:%s' % (parent, branch.name)]
-    if req:
-        # Update an existing request.
-        cmd += ['-r', str(req['id'])]
-    else:
+
+    if post_new:
         # Create a new request.
         cmd += ['--summary', "'%s'" % story['story']['name']]
+    else:
+        gitflow = core.GitFlow()
+        req = rb_ext.get_latest_review_request_for_branch(
+            gitflow.get('reviewboard.server'), branch.name)
+        if req:
+            # Update an existing request.
+            cmd += ['-r', str(req['id'])]
+        else:
+            # Create a new request.
+            cmd += ['--summary', "'%s'" % story['story']['name']]
 
     print "Posting a review using command: %s" % ' '.join(cmd)
     sub.call(cmd)

@@ -119,12 +119,24 @@ def update_story(story_id, **kwargs):
     client.stories.update(
         project_id=project_id, story_id=story_id, **kwargs)
 
+
 def get_story(story_id):
     gitflow = GitFlow()
     token = gitflow.get('workflow.token')
     project_id = gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     return client.stories.get(project_id=project_id, story_id=story_id)
+
+
+def finish_story(story_id):
+    story = get_story(story_id)
+    if story['story']['story_type'] == 'chore':
+        labels = story['story'].get('labels', [])
+        if not 'waiting-for-review' in labels:
+            labels += ['waiting-for-review']
+            update_story(story_id, labels=labels)
+    else:
+        update_story(story_id, current_state='finished')
 
 
 def colorize_string(string):

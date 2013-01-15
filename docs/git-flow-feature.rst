@@ -20,8 +20,8 @@ Synopsis
 
   `git flow` |`BRANCH`| [-h|--help]
   `git flow` |`BRANCH`| `list` [-v|--verbose]
-  `git flow` |`BRANCH`| `finish` [-F|--fetch] [-r|--rebase]
-                    [-k|--keep] [-D|--force-delete] [nameprefix]
+  `git flow` |`BRANCH`| `finish` [-n|--new-review] [-r|--rebase]
+                    [-P|--no-push] [-D|--force-delete] [nameprefix]
   `git flow` |`BRANCH`| `checkout` nameprefix
   `git flow` |`BRANCH`| `diff` [nameprefix]
   `git flow` |`BRANCH`| `rebase` [nameprefix]

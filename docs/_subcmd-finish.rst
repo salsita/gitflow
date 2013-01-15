@@ -10,8 +10,8 @@ Synopsis
 
 .. parsed-literal::
 
-  `git flow` |`BRANCH`| `finish` [-F|--fetch] [-r|--rebase]
-                    [-k|--keep] [-D|--force-delete] [nameprefix]
+  `git flow` |`BRANCH`| `finish` [-r|--rebase]
+                    [-D|--force-delete] [nameprefix]
 
 
 Description
@@ -31,7 +31,7 @@ Options
 -----------
 
   -h, --help          Show help message and exit.
-  -F, --fetch         Fetch from origin before performing local operation.
   -r, --rebase        Finish branch by rebasing first.
-  -k, --keep          Keep branch after performing finish.
   -D, --force-delete  Force delete |BRANCH| branch after finish.
+  -P, --no-push       Do not push to origin after performing finish.
+  -n, --new-review    Post a new review (do not update an existing one).

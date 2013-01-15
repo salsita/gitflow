@@ -585,7 +585,7 @@ class GitFlow(object):
 
     @requires_initialized
     def finish(self, identifier, name, fetch, rebase, keep, force_delete,
-               tagging_info):
+               tagging_info, push=False):
         """
         Finishes a branch of the given type, with the given short name.
 
@@ -608,7 +608,7 @@ class GitFlow(object):
                         )
         return mgr.finish(mgr.shorten(branch.name), fetch=fetch, rebase=rebase,
                           keep=keep, force_delete=force_delete,
-                          tagging_info=tagging_info)
+                          tagging_info=tagging_info, push=push)
 
     @requires_initialized
     def checkout(self, identifier, name):
