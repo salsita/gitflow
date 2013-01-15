@@ -15,23 +15,23 @@ def print_story(index, story):
     sys.stdout.write('\n')
 
 
-def filter_stories(stories):
-    return [s for s in stories if s['current_state'] in ['unstarted', 'started']]
+def filter_stories(stories, states):
+    return [s for s in stories if s['current_state'] in states]
 
 
 def prompt_user_to_select_story():
     [current, backlog] = get_iterations()
 
-    current_stories = []
-    for iter in current['iterations']:
-        current_stories = current_stories + filter_stories(iter['stories'])
+    current_stories = filter_stories(
+        [story for i in current['iterations'] for story in i], 
+        ['unstarted', 'started'])
     for i, s in enumerate(current_stories):
         print_story(i+1, s)
 
     offset = len(current_stories)
-    backlog_stories = []
-    for iter in backlog['iterations']:
-        backlog_stories = backlog_stories + filter_stories(iter['stories'])
+    backlog_stories = filter_stories(
+        [story for i in backlog['iterations'] for story in i], 
+        ['unstarted', 'started'])
     for i, s in enumerate(backlog_stories):
         print_story(offset+i+1, s)
 
@@ -163,3 +163,14 @@ def get_story_id_from_branch_name(branch_name):
         if not match:
             raise GitflowError('Weird branch name format: %s' % branch_name)
     return match.groups()[0]
+
+
+def show_release_summary():
+    current = get_iterations()[0]
+    current_stories = [story for i in current['iterations'] for story in i]
+    ids = [s['id'] for s in current_stories]
+    finished = filter_stories(current_stories, ['finished'])
+    #for s in current_stories:
+    #    if s.get('labels', [])
+    [s for s in current_stories if not (set(s.get('labels', []).isuperset(set(['']))))]
+
