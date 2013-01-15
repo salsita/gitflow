@@ -23,14 +23,14 @@ def prompt_user_to_select_story():
     [current, backlog] = get_iterations()
 
     current_stories = filter_stories(
-        [story for i in current['iterations'] for story in i], 
+        [story for i in current['iterations'] for story in i['stories']],
         ['unstarted', 'started'])
     for i, s in enumerate(current_stories):
         print_story(i+1, s)
 
     offset = len(current_stories)
     backlog_stories = filter_stories(
-        [story for i in backlog['iterations'] for story in i], 
+        [story for i in backlog['iterations'] for story in i['stories']],
         ['unstarted', 'started'])
     for i, s in enumerate(backlog_stories):
         print_story(offset+i+1, s)

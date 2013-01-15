@@ -10,9 +10,15 @@ def post_review(self, identifier, name, post_new):
     mgr = self.managers[identifier]
     branch = mgr.by_name_prefix(name)
 
-    parent = find_last_patch_parent(self.develop_name(), branch.name)
+    print ("Walking the Git reflogs to find review request parent (might "
+        "take a couple seconds)...")
+
+    if not post_new:
+        parent = find_last_patch_parent(self.develop_name(), branch.name)
+        if not parent:
+            print ("Could not find any merges into %s, using full patch." %
+                self.develop_name())
     if not parent:
-        print "Could not find any merges, using full patch."
         parent = get_branch_parent(branch.name)
 
     if not parent:
@@ -24,6 +30,7 @@ def post_review(self, identifier, name, post_new):
 
     cmd = ['post-review', '--branch', branch.name,
         '--guess-description',
+        '--parent', self.develop_name(),
         '--revision-range', '%s:%s' % (parent, branch.name)]
 
     if post_new:
@@ -42,6 +49,8 @@ def post_review(self, identifier, name, post_new):
 
     print "Posting a review using command: %s" % ' '.join(cmd)
     sub.call(cmd)
+
+core.GitFlow.post_review = post_review
 
 
 def get_branch_parent(branch_name):
@@ -73,5 +82,3 @@ def find_last_patch_parent(develop_name, branch_name):
         # Get the hash of the second most recent merge.
         return lines[1].split(' ')[0]
 
-
-core.GitFlow.post_review = post_review
