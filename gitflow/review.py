@@ -2,6 +2,7 @@ import subprocess as sub
 import gitflow.pivotal as pivotal
 import reviewboard.extensions as rb_ext
 import gitflow.core as core
+import sys
 
 from gitflow.exceptions import GitflowError
 

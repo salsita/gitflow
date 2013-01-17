@@ -216,7 +216,6 @@ class FeatureCommand(GitFlowCommand):
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=(not args.no_push))
 
-        import ipdb; ipdb.set_trace()
         story_id = pivotal.get_story_id_from_branch_name(name)
         # Add git notes so that we know about the story being finished.
         gitflow.git.notes("--ref=workflow", 'add',
