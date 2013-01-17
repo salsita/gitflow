@@ -6,6 +6,8 @@ Pure-Python implementation of Git extensions to provide high-level
 repository operations for Vincent Driessen's
 `branching model <http://nvie.com/git-model>`_.
 
+We've added a few tweaks to make it cooperate with Pivotal Tracker and ReviewBoard.
+
 
 Getting started
 ================
@@ -27,18 +29,30 @@ Or have a look at one of these screen casts:
   (by Dave Bock)
 
 
-Installing git-flow
+Installing salsita-gitflow
 ====================
 
-You can install ``git-flow``, using::
+You can install ``salsita gitflow``, using::
 
-    easy_install gitflow
+    easy_install salsita-gitflow
 
-Or, if you'd like to use ``pip`` instead::
+Or, if you'd like to use ``pip`` instead (recommended!)::
 
-    pip install gitflow
+    pip install salsita-gitflow
 
-``git-flow`` requires at least Python 2.5.
+``salsita-gitflow`` requires at least Python 2.5.
+
+Setting it up
+-------------
+Global (same for all projects)::
+* git config --global reviewboard.server https://dev.salsitasoft.com/rb
+* git config --global workflow.token <your PT token>
+Local (project specific)::
+* git config workflow.projectid <PT project id>
+* git config --global reviewboard.repoid <repo id in RB>
+
+If you have the original `git-flow <https://github.com/nvie/gitflow>` installed, just go to the git bin folder and delete everything that starts with ``git-flow``.
+
 
 Integration with your shell
 -----------------------------
@@ -94,6 +108,8 @@ suggestions.
 
 The ``-d`` flag will accept all defaults.
 
+Note: Please use the ``-d`` flag it will make your life much easier.
+
 
 Creating feature/release/hotfix/support branches
 ----------------------------------------------------
@@ -105,6 +121,18 @@ Creating feature/release/hotfix/support branches
       git flow feature finish <name>
   
   For feature branches, the ``<base>`` arg must be a commit on ``develop``.
+
+  `feature start` will list unstarted & started stories from
+  current & backlog iterations in Pivotal Tracker. Select one and it's state
+  will change to `started`. This command creates a feature branch as well, so
+  switch between stories using `git checkout`, not `git flow feature start`.
+
+  `feature finish` will finish the currently active story (merge it into
+  `develop`, push develop, change the story state in PT to `finished` and
+  post a review request to Pivotal Tracker). It will do its best to find
+  the corersponding review request in ReviewBoard and update the review but
+  if it can't then it will post a new review. You can force posting a new
+  review by setting the `-n/--new-review` flag.
 
 * To push/pull a feature branch to the remote repository, use::
 

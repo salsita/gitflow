@@ -28,7 +28,8 @@ install_requires = [
     'poster',
     'simplejson',
     'httplib2',
-    'colorama'
+    'colorama',
+    'rbtools'
 ]
 
 setup(
