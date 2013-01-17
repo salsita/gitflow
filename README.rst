@@ -122,17 +122,17 @@ Creating feature/release/hotfix/support branches
   
   For feature branches, the ``<base>`` arg must be a commit on ``develop``.
 
-  `feature start` will list unstarted & started stories from
+  ``feature start`` will list unstarted & started stories from
   current & backlog iterations in Pivotal Tracker. Select one and it's state
   will change to `started`. This command creates a feature branch as well, so
-  switch between stories using `git checkout`, not `git flow feature start`.
+  switch between stories using ``git checkout``, not ``git flow feature start``.
 
-  `feature finish` will finish the currently active story (merge it into
+  ``feature finish`` will finish the currently active story (merge it into
   `develop`, push develop, change the story state in PT to `finished` and
   post a review request to Pivotal Tracker). It will do its best to find
   the corersponding review request in ReviewBoard and update the review but
   if it can't then it will post a new review. You can force posting a new
-  review by setting the `-n/--new-review` flag.
+  review by setting the ``-n/--new-review`` flag.
 
 * To push/pull a feature branch to the remote repository, use::
 
