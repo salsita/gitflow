@@ -198,6 +198,9 @@ class FeatureCommand(GitFlowCommand):
         p.add_argument('-n', '--new-review', action='store_true',
             default=False, help='Post a new review for the whole branch, '
                 'not just for the last commit.')
+        p.add_argument('-R', '--no-review', action='store_true',
+            default=False, help='Do not post a review request.'
+                'not just for the last commit.')
         p.add_argument('-P', '--no-push', action='store_true',
             default=False, help='Do not push the develop branch to origin '
             'after merging with the feature branch.')
@@ -212,9 +215,17 @@ class FeatureCommand(GitFlowCommand):
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=(not args.no_push))
+
+        import ipdb; ipdb.set_trace()
         story_id = pivotal.get_story_id_from_branch_name(name)
+        # Add git notes so that we know about the story being finished.
+        gitflow.git.notes("--ref=workflow", 'add',
+            "-m 'finish %s'" % story_id, '-f', gitflow.develop_name())
+        gitflow.origin().push('refs/notes/workflow')
+
         pivotal.finish_story(story_id)
-        gitflow.post_review('feature', name, post_new=args.new_review)
+        if not args.no_review:
+            gitflow.post_review('feature', name, post_new=args.new_review)
 
     #- checkout
     @classmethod
@@ -373,8 +384,11 @@ class ReleaseCommand(GitFlowCommand):
 
     @staticmethod
     def run_start(args):
-        pivotal.show_release_summary()
         gitflow = GitFlow()
+        # TODO(Tom): Fetch notees...
+        #print "Fetching git notes (metadata)..."
+        #gitflow.origin().fetch('refs/notes/*:refs/notes/*')
+        pivotal.show_release_summary(gitflow)
         # NB: `args.version` is required since the branch must not yet exist
         # :fixme: get default value for `base`
         gitflow.start_transaction('create release branch %s (from %s)' % \

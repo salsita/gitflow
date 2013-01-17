@@ -10,8 +10,9 @@ def post_review(self, identifier, name, post_new):
     mgr = self.managers[identifier]
     branch = mgr.by_name_prefix(name)
 
-    print ("Walking the Git reflogs to find review request parent (might "
-        "take a couple seconds)...")
+    sys.stdout.write("Walking the Git reflogs to find review request parent (might "
+        "take a couple seconds)...\n")
+    sys.stdout.flush()
 
     if not post_new:
         parent = find_last_patch_parent(self.develop_name(), branch.name)

@@ -1,22 +1,34 @@
 from gitflow.core import GitFlow
 import busyflow.pivotal as pt
 from colorama import Style
+from colorama import init
+init()
 import sys
 import re
 
 from gitflow.exceptions import (NotInitialized, GitflowError)
 
-def print_story(index, story):
-    sys.stdout.write(Style.BRIGHT + str(index) + ' : ' + Style.RESET_ALL)
+def print_story(story, index=None, highlight_labels=[]):
+    if index:
+        sys.stdout.write(Style.BRIGHT + str(index) + ' : ' + Style.RESET_ALL)
     sys.stdout.write(colorize_string(story['name']))
-    sys.stdout.write(' ' + Style.DIM + str(story.get('labels', "")) + Style.RESET_ALL)
+    labels = []
+    for label in story.get('labels', []):
+        if label in highlight_labels:
+            lblstr = Style.BRIGHT + str(label) + Style.RESET_ALL
+        else:
+            lblstr = str(label)
+        labels.append(lblstr)
+    sys.stdout.write(' ' + Style.DIM + ','.join(labels) + Style.RESET_ALL)
     sys.stdout.write(' (' + Style.DIM + str(story['current_state']) +
         Style.RESET_ALL + ')')
     sys.stdout.write('\n')
 
 
-def filter_stories(stories, states):
-    return [s for s in stories if s['current_state'] in states]
+def filter_stories(stories, states, types=None):
+    types = types or ['feature', 'chore', 'bug']
+    return [s for s in stories if s['current_state'] in states and
+        s['story_type'] in types]
 
 
 def prompt_user_to_select_story():
@@ -26,14 +38,14 @@ def prompt_user_to_select_story():
         [story for i in current['iterations'] for story in i['stories']],
         ['unstarted', 'started'])
     for i, s in enumerate(current_stories):
-        print_story(i+1, s)
+        print_story(s, i+1)
 
     offset = len(current_stories)
     backlog_stories = filter_stories(
         [story for i in backlog['iterations'] for story in i['stories']],
         ['unstarted', 'started'])
     for i, s in enumerate(backlog_stories):
-        print_story(offset+i+1, s)
+        print_story(s, offset+i+1)
 
     stories = current_stories + backlog_stories
     # Prompt user to choose story index.
@@ -165,12 +177,61 @@ def get_story_id_from_branch_name(branch_name):
     return match.groups()[0]
 
 
-def show_release_summary():
+def show_release_summary(gitflow):
     current = get_iterations()[0]
-    current_stories = [story for i in current['iterations'] for story in i]
-    ids = [s['id'] for s in current_stories]
-    finished = filter_stories(current_stories, ['finished'])
-    #for s in current_stories:
-    #    if s.get('labels', [])
-    [s for s in current_stories if not (set(s.get('labels', []).isuperset(set(['']))))]
+    current_stories = [
+        story for i in current['iterations'] for story in i['stories']]
 
+    print Style.BRIGHT + 'Releasable stories:' + Style.RESET_ALL
+    candidate_chores = filter_stories(
+        current_stories, ['started'], types=['chore'])
+    releasable_chores = [chore for chore in candidate_chores
+        if 'reviewed' in chore.get('labels', [])]
+    candidate_stories = filter_stories(
+        current_stories, ['finished'], types=['bug', 'feature'])
+    releasable_stories = [s for s in candidate_stories
+        if set(['reviewed', 'qa+']).issubset(set(s.get('labels', [])))]
+    for item in releasable_stories + releasable_chores:
+        sys.stdout.write(' > ')
+        print_story(item)
+
+    print Style.BRIGHT + 'Unreleasable stories:' + Style.RESET_ALL
+    unreleasable = [item for item in current_stories
+        if not item in releasable_chores and not item in releasable_stories]
+    for item in unreleasable:
+        sys.stdout.write(' < ')
+        print_story(item, highlight_labels=['qa+', 'reviewed'])
+
+    #TODO(Tom): Better release summary based on what's already been merged...
+    #lines = gitflow.git.log(
+    #    '--show-notes=workflow', '--oneline', '--format="%H %N"').split('\n')
+    #finished_stories = []
+    #for line in lines:
+    #    parts = line.split(' ')
+    #    if len(parts) == 3:
+    #        (hash, op, story_id) = parts
+    #        if op == 'finish':
+    #            finished_stories.append((hash, story_id))
+
+    #lines = gitflow.git.log('--oneline', '--format="%h %s"').split('\n')
+    ##merges = [l for l in lines if l.split(' ')[1].lower() == 'merge']
+    #merged_branches = []
+    #for line in lines:
+    #    match = re.match(
+    #        "(.+)\ Merge\ branch\ '(.+)'\ into %s" % gitflow.develop_name(),
+    #        line)
+    #    if match:
+    #        (hash, branch) = match.groups()
+    #        if not branch in merged_branches:
+    #            merged_branches.append(branch)
+    #print merged_branches
+    #releasable = releasable_stories + releasable_chores
+    #for story in releasable:
+    #    stories_merged_before_this_story = \
+    #        set([get_story_id_from_branch_name(s) for s in \
+    #            merged_branches[merged_branches.index(story) + 1 : ]])
+    #    blockers = stories_merged_before_this_story.intersection(
+    #        [s['id'] for s in unreleasable])
+    #    if blockers:
+    #        print "Story '%s' is blocked by stories: %s" % (story, blockers)
+    #import ipdb; ipdb.set_tracce()
