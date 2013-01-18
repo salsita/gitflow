@@ -1,5 +1,6 @@
 from gitflow.core import GitFlow
 import busyflow.pivotal as pt
+import string
 from colorama import Style
 from colorama import init
 init()
@@ -77,10 +78,14 @@ def prompt_user_to_select_story():
 
 def prompt_user_to_select_slug(story):
     print ("Please choose short story description (will be slugified " +
-        "and used in the branch label).")
+        "and used as part of the branch name). Don't use whitespace.")
     slug_hint = slugify(get_story_bold_part(story['name']))
     print "Story description (default: '%s'):" % slug_hint
     slug = raw_input().strip() or slug_hint
+    if any(c in (string.whitespace + '/') for c in slug):
+        print ("\n%sERROR%s: The slug must not contain whitespace or '/'.\n" %
+            (Style.BRIGHT, Style.RESET_ALL))
+        return prompt_user_to_select_slug(story)
     return slug
 
 
