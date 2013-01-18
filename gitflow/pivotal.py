@@ -136,8 +136,11 @@ def update_story(story_id, **kwargs):
     token = gitflow.get('workflow.token')
     project_id = gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
-    client.stories.update(
-        project_id=project_id, story_id=story_id, **kwargs)
+    try:
+        client.stories.update(
+            project_id=project_id, story_id=story_id, **kwargs)
+    except pt.RequestError, e:
+        raise GitflowError(e.parsed_body['errors']['error'])
 
 
 def get_story(story_id):
