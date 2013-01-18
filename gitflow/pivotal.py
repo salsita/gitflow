@@ -34,11 +34,14 @@ def filter_stories(stories, states, types=None):
 def prompt_user_to_select_story():
     [current, backlog] = get_iterations()
 
+    print Style.DIM + "--------- current -----------" + Style.RESET_ALL
     current_stories = filter_stories(
         [story for i in current['iterations'] for story in i['stories']],
         ['unstarted', 'started'])
     for i, s in enumerate(current_stories):
         print_story(s, i+1)
+
+    print Style.DIM + "--------- backlog -----------" + Style.RESET_ALL
 
     offset = len(current_stories)
     backlog_stories = filter_stories(
