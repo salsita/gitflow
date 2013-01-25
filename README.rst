@@ -45,9 +45,12 @@ Or, if you'd like to use ``pip`` instead (recommended!)::
 Setting it up
 -------------
 Global (same for all projects)::
+
 * git config --global reviewboard.server https://dev.salsitasoft.com/rb
 * git config --global workflow.token <your PT token>
+
 Local (project specific)::
+
 * git config workflow.projectid <PT project id>
 * git config --global reviewboard.repoid <repo id in RB>
 
