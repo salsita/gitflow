@@ -46,7 +46,7 @@ Setting it up
 -------------
 Global (same for all projects)::
 
-* git config --global reviewboard.server https://dev.salsitasoft.com/rb
+* git config --global reviewboard.url https://dev.salsitasoft.com/rb
 * git config --global workflow.token <your PT token>
 
 Local (project specific)::
