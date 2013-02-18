@@ -52,7 +52,7 @@ Global (same for all projects)::
 Local (project specific)::
 
 * git config workflow.projectid <PT project id>
-* git config --global reviewboard.repoid <repo id in RB>
+* git config reviewboard.repoid <repo id in RB>
 
 If you have the original `git-flow <https://github.com/nvie/gitflow>` installed, just go to the git bin folder and delete everything that starts with ``git-flow``.
 
