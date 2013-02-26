@@ -230,7 +230,7 @@ class StoryEndpoint(Endpoint):
         if name is not None:
             story.name(name)
         if description is not None:
-            story.descriptio(description)
+            story.description(description)
         if requested_by is not None:
             story.requested_by(requested_by)
         if owned_by is not None:
@@ -250,12 +250,11 @@ class StoryEndpoint(Endpoint):
         return str(story)
 
     def make_comment_xml(self, text, author):
-        x = XMLBuilder(format=True)
-        with x.note:
-            x << ('text', text)
-            if author is not None:
-                x << ('author', author)
-        return str(x)
+        note = XMLBuilder('note')
+        note.text(text)
+        if author is not None:
+            note.author(author)
+        return str(note)
 
     def all(self, project_id, query=None, limit=None, offset=None):
         return self._get("projects/%s/stories" % project_id, query=query, limit=limit, offset=offset)

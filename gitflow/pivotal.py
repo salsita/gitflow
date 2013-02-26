@@ -143,6 +143,15 @@ def update_story(story_id, **kwargs):
         raise GitflowError(e.parsed_body['errors']['error'])
 
 
+def add_comment_to_story(story_id, msg):
+    gitflow = GitFlow()
+    token = gitflow.get('workflow.token')
+    project_id = gitflow.get('workflow.projectid')
+    client = pt.PivotalClient(token=token)
+    client.stories.add_comment(
+        project_id=project_id, story_id=story_id, text =msg)
+
+
 def get_story(story_id):
     gitflow = GitFlow()
     token = gitflow.get('workflow.token')

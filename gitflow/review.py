@@ -50,7 +50,20 @@ def post_review(self, identifier, name, post_new):
             cmd += ['--summary', "'%s'" % story['story']['name']]
 
     print "Posting a review using command: %s" % ' '.join(cmd)
-    sub.call(cmd)
+    proc = sub.Popen(cmd, stdout=sub.PIPE)
+    (out, err) = proc.communicate()
+    # Post a comment to the relevant Pivotal Tracker story (to make it easier to
+    # track review requests).
+    review_url = out.strip().split('\n')[-1]
+    if not review_url.startswith('http'):
+        print ("Could not determine review URL (probably an error when "
+            "posting the review")
+        return
+    if '-r' in cmd:
+        comment = "Review request %s updated."
+    else:
+        comment = "Review request posted: %s"
+    pivotal.add_comment_to_story(story_id, comment % review_url)
 
 core.GitFlow.post_review = post_review
 
