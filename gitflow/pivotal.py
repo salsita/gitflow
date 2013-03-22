@@ -140,7 +140,9 @@ def update_story(story_id, **kwargs):
         client.stories.update(
             project_id=project_id, story_id=story_id, **kwargs)
     except pt.RequestError, e:
-        raise GitflowError(e.parsed_body['errors']['error'])
+        msg  = e.parsed_body['message']
+        msg += '\n\nMake sure that you are allowed to update this story!'
+        raise GitflowError(msg)
 
 
 def add_comment_to_story(story_id, msg):
