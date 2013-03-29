@@ -25,6 +25,7 @@ class AlreadyInitialized(StatusError):
     def __str__(self):
         return ("Already initialized for gitflow.\n"
                 "To force reinitialization use: git flow init -f")
+class ReleaseAlreadyAssigned(StatusError): pass
 
 class MergeConflict(StatusError):
     def __str__(self):

@@ -211,18 +211,38 @@ class FeatureCommand(GitFlowCommand):
         gitflow = GitFlow()
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
         gitflow.start_transaction('finishing feature branch %s' % name)
-        gitflow.finish('feature', name,
+
+        #
+        # PT story stuff.
+        #
+        story_id = pivotal.get_story_id_from_branch_name(name)
+        story = pivotal.Story(story_id)
+        finished = story.get_state() == 'finished'
+        release = story.get_release()
+
+        # Get the state of the feature.
+        if finished:
+            if release:
+                # Merge into the release branch.
+                prefix = gitflow.get_prefix('release')
+                short_name = gitflow.nameprefix_or_current('release', release)
+                upstream = prefix + short_name
+            else:
+                # Merge into the develop branch and finish the story.
+                upstream = gitflow.develop_name()
+        else:
+            # Merge into the develop branch.
+            story.finish()
+            upstream = gitflow.develop_name()
+
+        #
+        # Git manipulation.
+        #
+        gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=(not args.no_push))
 
-        story_id = pivotal.get_story_id_from_branch_name(name)
-        # Add git notes so that we know about the story being finished.
-        gitflow.git.notes("--ref=workflow", 'add',
-            "-m 'finish %s'" % story_id, '-f', gitflow.develop_name())
-        gitflow.origin().push('refs/notes/workflow')
-
-        pivotal.finish_story(story_id)
         if not args.no_review:
             gitflow.post_review('feature', name, post_new=args.new_review)
 

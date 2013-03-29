@@ -260,6 +260,7 @@ class BranchManager(object):
             kwargs['message'] = message
         # `git merge` does not send the error message to stderr, thus
         # we need to capture stdout manually :-(
+        print '  (merging %s into %s)' % (full_name, into)
         stdout = StringIO()
         try:
             repo.git.merge(full_name, output_stream=stdout, **kwargs)
@@ -315,8 +316,8 @@ class FeatureBranchManager(BranchManager):
             name, base, fetch=fetch, must_be_on_default_base=False)
 
 
-    def finish(self, name, fetch=False, rebase=False, keep=False,
-               force_delete=False, push=False, tagging_info=None):
+    def finish(self, name, fetch=False, upstream='default', rebase=False,
+               keep=False, force_delete=False, push=False, tagging_info=None):
         """
         Finishes the branch of type `feature` named :attr:`name`.
         Finishing means that:
@@ -342,14 +343,17 @@ class FeatureBranchManager(BranchManager):
         gitflow = self.gitflow
         full_name = self.full_name(name)
         gitflow.must_be_uptodate(full_name, fetch=fetch)
-        gitflow.must_be_uptodate(gitflow.develop_name(), fetch=fetch)
+        gitflow.must_be_uptodate(upstream, fetch=fetch)
+
         if rebase:
-            gitflow.rebase(self.identifier, name, interactive=False)
+            gitflow.rebase(self.identifier, name, interactive=False,
+                           upstream=upstream)
+        else:
+            self.merge(name, upstream,
+                       'Finished %(identifier)s %(short_name)s.')
 
-        to_push = [self.gitflow.develop_name()]
+        to_push = [upstream]
 
-        self.merge(name, self.gitflow.develop_name(),
-                   'Finished %(identifier)s %(short_name)s.')
         if not keep:
             self.delete(name, force=force_delete)
             to_push.append(':'+full_name)

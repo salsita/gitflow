@@ -585,7 +585,7 @@ class GitFlow(object):
 
     @requires_initialized
     def finish(self, identifier, name, fetch, rebase, keep, force_delete,
-               tagging_info, push=False):
+               tagging_info, push=False, **kwargs):
         """
         Finishes a branch of the given type, with the given short name.
 
@@ -608,7 +608,7 @@ class GitFlow(object):
                         )
         return mgr.finish(mgr.shorten(branch.name), fetch=fetch, rebase=rebase,
                           keep=keep, force_delete=force_delete,
-                          tagging_info=tagging_info, push=push)
+                          tagging_info=tagging_info, push=push, **kwargs)
 
     @requires_initialized
     def checkout(self, identifier, name):
@@ -650,7 +650,7 @@ class GitFlow(object):
         print self.git.diff('%s..%s' % (base, full_name))
 
     @requires_initialized
-    def rebase(self, identifier, name, interactive):
+    def rebase(self, identifier, name, interactive, upstream=None):
         """
         Rebase a branch of the given type, with the given short name,
         on top of it's default base.
@@ -675,7 +675,10 @@ class GitFlow(object):
         args = []
         if interactive:
             args.append('-i')
-        args.append(mgr.default_base())
+        if not upstream:
+            upstream = mgr.default_base()
+        info('  (rebasing onto %s)' % upstream)
+        args.append(upstream)
         self.git.rebase(*args)
 
     @requires_initialized

@@ -7,7 +7,58 @@ init()
 import sys
 import re
 
-from gitflow.exceptions import (NotInitialized, GitflowError)
+from gitflow.exceptions import (NotInitialized, GitflowError,
+                                ReleaseAlreadyAssigned)
+
+
+class Story(object):
+    def __init__(self, story_id):
+        self._story_id = story_id
+
+        # Get config as saved in git config.
+        gitflow = GitFlow()
+        self._project_id = gitflow.get('workflow.projectid')
+        token = gitflow.get('workflow.token')
+
+        # Get a PT client for our token, as well as the story itself.
+        self._client = pt.PivotalClient(token=token)
+        self._story = self._client.stories.get(self._project_id, self._story_id)
+
+    def get_state(self):
+        return self._story['story'].get('current_state')
+
+    def set_state(self, state):
+        self._update(current_state=state)
+
+    def finish(self):
+        self.set_state('finished')
+
+    def is_finished(self):
+        return self.get_state() == 'finished'
+
+    def get_release(self):
+        for label in self._story['story'].get('labels', []):
+            m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
+            if m:
+                return m.groups()[0]
+
+    def set_release(self, release):
+        if self.get_release():
+            raise ReleaseAlreadyAssigned('Story already assigned to a release')
+        if not re.match('[0-9]([.][0-9]+){2}'):
+            raise ValueError('Invalid format, should be X.Y.Z')
+        self._update(labels=['release-' + release])
+
+    def _update(self, **kwargs):
+        try:
+            self._client.stories.update(project_id=self._project_id,
+                                        story_id=self._story_id,
+                                        **kwargs)
+        except pt.RequestError, e:
+            msg  = e.parsed_body['message']
+            msg += '\n\nMake sure that you are allowed to update this story!'
+            raise GitflowError(msg)
+
 
 def print_story(story, index=None, highlight_labels=[]):
     if index:
@@ -164,13 +215,7 @@ def get_story(story_id):
 
 def finish_story(story_id):
     story = get_story(story_id)
-    if story['story']['story_type'] == 'chore':
-        labels = story['story'].get('labels', [])
-        if not 'waiting-for-review' in labels:
-            labels += ['waiting-for-review']
-            update_story(story_id, labels=labels)
-    else:
-        update_story(story_id, current_state='finished')
+    update_story(story_id, current_state='finished')
 
 
 def colorize_string(string):
