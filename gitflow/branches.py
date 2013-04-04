@@ -260,7 +260,6 @@ class BranchManager(object):
             kwargs['message'] = message
         # `git merge` does not send the error message to stderr, thus
         # we need to capture stdout manually :-(
-        print '  (merging %s into %s)' % (full_name, into)
         stdout = StringIO()
         try:
             repo.git.merge(full_name, output_stream=stdout, **kwargs)

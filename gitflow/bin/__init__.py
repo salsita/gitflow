@@ -27,10 +27,9 @@ from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
 from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
-                                BaseNotOnBranch)
+                                BaseNotOnBranch, NoSuchBranchError)
 import gitflow.pivotal as pivotal
-# This will monkeypatch `gitflow.core`.
-import gitflow.review
+from gitflow.review import BranchReview, ReviewNotAcceptedYet
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
@@ -196,9 +195,6 @@ class FeatureCommand(GitFlowCommand):
         #        help='Keep branch after performing finish.')
         p.add_argument('-D', '--force-delete', action='store_true',
             default=False, help='Force delete feature branch after finish.')
-        p.add_argument('-n', '--new-review', action='store_true',
-            default=False, help='Post a new review for the whole branch, '
-                'not just for the last commit.')
         p.add_argument('-R', '--no-review', action='store_true',
             default=False, help='Do not post a review request.'
                 'not just for the last commit.')
@@ -211,11 +207,9 @@ class FeatureCommand(GitFlowCommand):
     def run_finish(args):
         gitflow = GitFlow()
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
-        gitflow.start_transaction('finishing feature branch %s' % name)
 
-        #
-        # PT story stuff.
-        #
+        #+++ PT story stuff
+        sys.stdout.write('Connecting to Pivotal Tracker ... ')
         story_id = pivotal.get_story_id_from_branch_name(name)
         story = pivotal.Story(story_id)
         finished = story.get_state() == 'finished'
@@ -223,6 +217,7 @@ class FeatureCommand(GitFlowCommand):
 
         # Get the state of the feature.
         if finished:
+            sys.stdout.write('story already finished ... ')
             if release:
                 # Merge into the release branch.
                 prefix = gitflow.get_prefix('release')
@@ -234,18 +229,24 @@ class FeatureCommand(GitFlowCommand):
         else:
             # Merge into the develop branch.
             story.finish()
+            sys.stdout.write('finishing %s ... ' % story.get_id())
             upstream = gitflow.develop_name()
+        print 'OK'
 
-        #
-        # Git manipulation.
-        #
+        #+++ Review Board manipulation
+        sys.stdout.write('Posting review ... ')
+        if not args.no_review:
+            BranchReview('feature', name).post()
+        print 'OK'
+
+        #+++ Git manipulation
+        sys.stdout.write('Finishing feature branch ... upstream is %s ... ' \
+                         % upstream)
         gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=(not args.no_push))
-
-        if not args.no_review:
-            gitflow.post_review('feature', name, post_new=args.new_review)
+        print 'OK'
 
     #- checkout
     @classmethod
@@ -459,13 +460,19 @@ class ReleaseCommand(GitFlowCommand):
     def register_finish(cls, parent):
         p = parent.add_parser('finish', help='Finish a release branch.')
         p.set_defaults(func=cls.run_finish)
-        p.add_argument('-F', '--fetch', action='store_true',
+        # fetch by default
+        p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Fetch from origin before performing local operation.')
-        p.add_argument('-p', '--push', action='store_true',
+        # push by default
+        p.add_argument('-P', '--no-push', action='store_true',
                        #:todo: get "origin" from config
                        help="Push to origin after performing finish.")
         p.add_argument('-k', '--keep', action='store_true',
                 help='Keep branch after performing finish.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
         p.add_argument('version', nargs='?')
 
         g = p.add_argument_group('tagging options')
@@ -482,8 +489,12 @@ class ReleaseCommand(GitFlowCommand):
     @staticmethod
     def run_finish(args):
         gitflow = GitFlow()
+        git     = gitflow.git
+        origin  = gitflow.origin()
         version = gitflow.name_or_current('release', args.version)
-        gitflow.start_transaction('finishing release branch %s' % version)
+
+        #+++ Merge release branch into develop and master
+        sys.stdout.write('Finishing release branch %s ... ' % version)
         tagging_info = None
         if not args.notag:
             tagging_info = dict(
@@ -491,9 +502,80 @@ class ReleaseCommand(GitFlowCommand):
                 signingkey=args.signingkey,
                 message=args.message)
         release = gitflow.finish('release', version,
-                                 fetch=args.fetch, rebase=False,
+                                 fetch=(not args.no_fetch), rebase=False,
                                  keep=args.keep, force_delete=False,
-                                 tagging_info=tagging_info, push=args.push)
+                                 tagging_info=tagging_info, push=(not args.no_push))
+        print 'OK'
+
+        #+++ Collect local and remote branches to be deleted
+        sys.stdout.write('Collecting branches to be deleted ... ')
+        local_branches  = list()
+        remote_branches = list()
+
+        #+ Collect features to be deleted.
+        origin_prefix = str(origin) + '/'
+        feature_prefix = gitflow.get_prefix('feature')
+        # refs = [<type>/<id>/...]
+        refs = [str(ref)[len(origin_prefix):] for ref in origin.refs]
+        release = pivotal.Release(version)
+        for story in release.iter_stories():
+            # prefix = <feature-prefix>/<id>
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                name = gitflow.nameprefix_or_current('feature', prefix)
+                local_branches.append(feature_prefix + name)
+            except NoSuchBranchError:
+                pass
+            for ref in refs:
+                # if <feature-prefix>/... startswith <feature-prefix>/<id>
+                if ref.startswith(prefix):
+                    remote_branches.append(ref)
+        #+ Collect releases to be deleted.
+        release_branch = gitflow.get_prefix('release') + version
+        try:
+            gitflow.nameprefix_or_current('release', version)
+            local_branches.append(release_branch)
+        except NoSuchBranchError:
+            pass
+        if release_branch in refs:
+            remote_branches.append(release_branch)
+        print 'OK'
+
+        #+++ Delete local and remote branches that are a part of this release
+        sys.stdout.write('Checking out %s ... ' % gitflow.develop_name())
+        git.checkout(gitflow.develop_name())
+        print 'OK'
+        #+ Delete local branches.
+        print 'Deleting local branches ...'
+        for branch in local_branches:
+            git.branch('-D', branch)
+            print '    ' + branch
+        print '    OK'
+        #+ Delete remote branches.
+        print 'Deleting remote branches ...'
+        for branch in remote_branches:
+            print '    ' + branch
+        refspecs = [(':' + b) for b in remote_branches]
+        git.push(str(origin), *refspecs)
+        print '    OK'
+
+        #+++ Close (submit) all relevant reviews in Review Board
+        print 'Submitting all relevant review requests ... '
+        for story in release.iter_stories():
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                r = BranchReview.from_prefix(prefix)
+            except NoSuchBranchError, e:
+                if not args.ignore_missing_reviews:
+                    raise
+                print '    ' + str(e)
+                continue
+            r.submit()
+            print '    ' + str(r.get_id())
+        print '    OK'
+
+        #+++ Deliver all relevant stories in Pivotal Tracker
+        release.deliver()
 
     #- publish
     @classmethod

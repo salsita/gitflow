@@ -8,7 +8,8 @@ import sys
 import re
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
-                                ReleaseAlreadyAssigned, IllegalVersionFormat)
+                                ReleaseAlreadyAssigned, IllegalVersionFormat,
+                                StatusError)
 
 
 def _get_client():
@@ -71,11 +72,23 @@ class Story(object):
 
     def finish(self):
         assert self.is_feature()
+        if self.get_state() != 'started':
+            raise StatusError('Feature not started: ' + str(self.get_id()))
         self.set_state('finished')
 
     def is_finished(self):
         assert self.is_feature()
         return self.get_state() == 'finished'
+
+    def deliver(self):
+        assert self.is_feature()
+        if self.get_state() != 'finished':
+            raise StatusError('Feature not finished: ' + str(self.get_id()))
+        self.set_state('delivered')
+
+    def is_delivered(self):
+        assert self.is_feature()
+        return self.get_state() == 'delivered'
 
     def get_release(self):
         assert self.is_feature()
@@ -135,7 +148,6 @@ class Release(object):
 
     def start(self):
         print 'Following stories were added to release %s:' % self._version
-        story_added = False
         for story in self._current_stories:
             if story.is_feature() and \
                     story.is_finished() and \
@@ -143,9 +155,15 @@ class Release(object):
                 story.assign_to_release(self._version)
                 sys.stdout.write('    ')
                 story.dump()
-                story_added = True
-        if not story_added:
-            print '    None'
+        print '    OK'
+
+    def deliver(self):
+        print 'Following stories were delivered as of release %s:' \
+              % self._version
+        for story in self.iter_stories():
+            story.deliver()
+            sys.stdout.write('    ')
+            story.dump()
 
     def iter_stories(self):
         for story in self._current_stories:

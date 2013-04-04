@@ -178,18 +178,18 @@ class HttpClient:
             # get rid of the port number if it's present.
             host = host.split(":")[0]
 
-            print("Looking for '%s %s' cookie in %s" % \
-                  (host, path, self.cookie_file))
+            #print("Looking for '%s %s' cookie in %s" % \
+            #      (host, path, self.cookie_file))
             self._cj.load(self.cookie_file, ignore_expires=True)
 
             try:
                 cookie = self._cj._cookies[host][path]['rbsessionid']
 
                 if not cookie.is_expired():
-                    print("Loaded valid cookie -- no login required")
+            #        print("Loaded valid cookie -- no login required")
                     return True
 
-                print("Cookie file loaded, but cookie has expired")
+            #    print("Cookie file loaded, but cookie has expired")
             except KeyError:
                 print("Cookie file loaded, but no cookie for this server")
         except IOError, error:

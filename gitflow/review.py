@@ -4,7 +4,97 @@ import reviewboard.extensions as rb_ext
 import gitflow.core as core
 import sys
 
-from gitflow.exceptions import GitflowError
+from gitflow.core import GitFlow
+from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
+                                NoSuchBranchError)
+
+
+class ReviewNotAcceptedYet(GitflowError): pass
+
+def _get_repo_id():
+    gitflow = GitFlow()
+    return gitflow.get('reviewboard.repoid')
+
+def _get_server():
+    gitflow = GitFlow()
+    return gitflow.get('reviewboard.server')
+
+def _get_develop_name():
+    gitflow = GitFlow()
+    return gitflow.develop_name()
+
+def _get_branch(identifier, name):
+    gitflow = GitFlow()
+    prefix = gitflow.get_prefix(identifier)
+    name = gitflow.nameprefix_or_current(identifier, name)
+    return prefix + name
+
+
+class BranchReview(object):
+    def __init__(self, branch):
+        self._branch = branch
+        # XXX: Requires the cookie for now
+        self._client = rb_ext.make_rbclient(_get_server(), '', '')
+
+    def __getattr__(self, name):
+        if name == '_rid':
+            self._rid = self._branch_to_rid(self._branch)
+            return self._rid
+        raise AttributeError
+
+    def get_id(self):
+        return self._rid
+
+    def post(self):
+        assert self._rid
+        if not self._rid:
+            return
+        cmd = ['rbt', 'post',
+               '--branch', self._branch,
+               '--parent', _get_develop_name(),
+               '--guess-fields']
+        if self._rid:
+            sys.stdout.write('updating %s ... ' % str(self._rid))
+            cmd.append('--review-request-id')
+            cmd.append(str(self._rid))
+        else:
+            sys.stdout.write('new review) ... ')
+        sub.check_output(cmd)
+
+    def submit(self):
+        assert self._rid
+        if not self.is_accepted():
+            raise ReviewNotAcceptedYet('review %s not accepted yet' \
+                                       % str(self._rid))
+        self._update(status='submitted')
+
+    def is_accepted(self):
+        assert self._rid
+        reviews = self._client.get_reviews_for_review_request(self._rid)
+        return any(r['ship_it'] for r in reviews)
+
+    def _update(self, **kwargs):
+        self._client.update_request(self.get_id(), fields=kwargs, publish=True)
+
+    def _branch_to_rid(self, branch):
+        options = dict(repository=_get_repo_id())
+        reviews = self._client.get_review_requests(options=options,
+                                                   branch=self._branch)
+        if len(reviews) > 1:
+            raise MultipleReviewRequestsForBranch(self._branch)
+        elif len(reviews) == 1:
+            return reviews[0]['id']
+
+    @classmethod
+    def from_prefix(cls, prefix):
+        client = rb_ext.make_rbclient(_get_server(), '', '')
+        options = dict(repository=_get_repo_id())
+        reviews = client.get_review_requests(options=options)
+        for review in reviews:
+            if review['branch'].startswith(prefix):
+                t = type('BranchReview', (cls,), dict(_rid=review['id']))
+                return t(review['branch'])
+        raise NoSuchBranchError('no review for branch prefixed with ' + prefix)
 
 
 def post_review(self, identifier, name, post_new):

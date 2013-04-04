@@ -677,7 +677,6 @@ class GitFlow(object):
             args.append('-i')
         if not upstream:
             upstream = mgr.default_base()
-        info('  (rebasing onto %s)' % upstream)
         args.append(upstream)
         self.git.rebase(*args)
 
