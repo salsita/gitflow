@@ -58,3 +58,8 @@ class BranchTypeExistsError(ObjectError):
 class NoSuchLocalBranchError(NoSuchBranchError):
     def __str__(self):
         return ("Local branch '%s' does not exist." % self.args[0])
+
+class IllegalVersionFormat(GitflowError):
+    def __str__(self):
+        return "Version string is ill-formed, expected x.y.z, got " + \
+                self.args[0]

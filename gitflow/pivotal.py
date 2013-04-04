@@ -8,49 +8,52 @@ import sys
 import re
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
-                                ReleaseAlreadyAssigned)
+                                ReleaseAlreadyAssigned, IllegalVersionFormat)
+
+
+def _get_client():
+    gitflow = GitFlow()
+    token = gitflow.get('workflow.token')
+    return pt.PivotalClient(token=token)
+
+def _get_project_id():
+    return GitFlow().get('workflow.projectid')
+
+def _iter_current_stories():
+    client = _get_client()
+    pid = _get_project_id()
+    for iteration in client.iterations.current(pid)['iterations']:
+        for story in iteration['stories']:
+            yield Story.from_dict(story)
+
+def _check_version_format(version):
+    if not re.match('[0-9]+([.][0-9]+){2}$', version):
+        raise IllegalVersionFormat(version)
 
 
 class Story(object):
-    def __init__(self, story_id):
-        self._story_id = story_id
+    def __init__(self, story_id, _skip_story_download=False):
+        self._project_id = _get_project_id()
+        self._client = _get_client()
+        if _skip_story_download:
+            return
+        payload = self._client.stories.get(self._project_id, story_id)
+        self._story = payload['story']
 
-        # Get config as saved in git config.
-        gitflow = GitFlow()
-        self._project_id = gitflow.get('workflow.projectid')
-        token = gitflow.get('workflow.token')
+    def get_id(self):
+        return self._story['id']
 
-        # Get a PT client for our token, as well as the story itself.
-        self._client = pt.PivotalClient(token=token)
-        self._story = self._client.stories.get(self._project_id, self._story_id)
+    def get_type(self):
+        return self._story['story_type']
 
     def get_state(self):
-        return self._story['story'].get('current_state')
+        return self._story['current_state']
 
     def set_state(self, state):
         self._update(current_state=state)
 
-    def finish(self):
-        self.set_state('finished')
-
-    def is_finished(self):
-        return self.get_state() == 'finished'
-
-    def get_release(self):
-        for label in self.get_labels():
-            m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
-            if m:
-                return m.groups()[0]
-
-    def set_release(self, release):
-        if self.get_release():
-            raise ReleaseAlreadyAssigned('Story already assigned to a release')
-        if not re.match('[0-9]([.][0-9]+){2}$', release):
-            raise ValueError('Invalid format, should be X.Y.Z')
-        self.add_label('release-' + release)
-
     def get_labels(self):
-        return self._story['story'].get('labels', [])
+        return self._story.get('labels', [])
 
     def add_label(self, label):
         labels = self.get_labels()
@@ -59,15 +62,120 @@ class Story(object):
         labels.append(label)
         self._update(labels=labels)
 
+    def is_labeled(self, label):
+        return label in self.get_labels()
+
+    #+++ Feature-specific stuff
+    def is_feature(self):
+        return self.get_type() == 'feature'
+
+    def finish(self):
+        assert self.is_feature()
+        self.set_state('finished')
+
+    def is_finished(self):
+        assert self.is_feature()
+        return self.get_state() == 'finished'
+
+    def get_release(self):
+        assert self.is_feature()
+        for label in self.get_labels():
+            m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
+            if m:
+                return m.groups()[0]
+
+    def assign_to_release(self, release):
+        assert self.is_feature()
+        _check_version_format(release)
+        if self.get_release():
+            raise ReleaseAlreadyAssigned('Story already assigned to a release')
+        self.add_label('release-' + release)
+    #--- Feature-specific stuff
+
+    def dump(self, highlight_labels=[]):
+        story = self._story
+        sys.stdout.write(colorize_string(story['name']))
+        labels = []
+        for label in story.get('labels', []):
+            if label in highlight_labels:
+                lblstr = Style.BRIGHT + str(label) + Style.RESET_ALL
+            else:
+                lblstr = str(label)
+            labels.append(lblstr)
+        sys.stdout.write(' ' + Style.DIM + ','.join(labels) + Style.RESET_ALL)
+        sys.stdout.write(' (' + Style.DIM + str(story['current_state']) +
+            Style.RESET_ALL + ')')
+        sys.stdout.write('\n')
+
     def _update(self, **kwargs):
         try:
             self._client.stories.update(project_id=self._project_id,
-                                        story_id=self._story_id,
+                                        story_id=self.get_id(),
                                         **kwargs)
         except pt.RequestError, e:
             msg  = e.parsed_body['message']
             msg += '\n\nMake sure that you are allowed to update this story!'
             raise GitflowError(msg)
+        # Commit changes into our internal story instance as well.
+        self._story.update(kwargs)
+
+    @classmethod
+    def from_dict(cls, story):
+        t = type('Story', (cls,), dict(_story=story))
+        return t(0, _skip_story_download=True)
+
+
+class Release(object):
+    def __init__(self, version, _skip_story_download=False):
+        _check_version_format(version)
+        self._version = version
+        if _skip_story_download:
+            return
+        self._current_stories = list(_iter_current_stories())
+
+    def start(self):
+        print 'Following stories were added to release %s:' % self._version
+        story_added = False
+        for story in self._current_stories:
+            if story.is_feature() and \
+                    story.is_finished() and \
+                    story.get_release() is None:
+                story.assign_to_release(self._version)
+                sys.stdout.write('    ')
+                story.dump()
+                story_added = True
+        if not story_added:
+            print '    None'
+
+    def iter_stories(self):
+        for story in self._current_stories:
+            if story.is_labeled('release-' + self._version):
+                yield story
+
+    def dump_stories(self):
+        print '%s %s %s %s' % (32 * '-', 'Release', self._version, 33 * '-')
+        for story in self.iter_stories():
+            story.dump(highlight_labels=['release-' + self._version])
+        print 80 * '-' + '\n'
+
+    @classmethod
+    def dump_all_releases(cls):
+        stories = dict()
+        for story in _iter_current_stories():
+            if story.is_feature():
+                release = story.get_release()
+                if release:
+                    if release in stories:
+                        stories[release].append(story)
+                    else:
+                        stories[release] = [story]
+        for release in stories:
+            cls.from_dict(release, stories[release]).dump_stories()
+
+    @classmethod
+    def from_dict(cls, version, stories):
+        t = type('Release', (cls,), dict(_current_stories=stories))
+        return t(version, _skip_story_download=True)
 
 
 def print_story(story, index=None, highlight_labels=[]):
@@ -99,7 +207,7 @@ def prompt_user_to_select_story():
     print Style.DIM + "--------- current -----------" + Style.RESET_ALL
     current_stories = filter_stories(
         [story for i in current['iterations'] for story in i['stories']],
-        ['unstarted', 'started'])
+        ['unstarted', 'started'], ['feature'])
     for i, s in enumerate(current_stories):
         print_story(s, i+1)
 

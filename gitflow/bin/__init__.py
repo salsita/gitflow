@@ -20,6 +20,7 @@ git-flow
 # Distributed under a BSD-like license. For full terms see the file LICENSE.txt
 #
 
+import sys
 import argparse
 
 from gitflow.core import GitFlow, info, GitCommandError
@@ -368,6 +369,7 @@ class ReleaseCommand(GitFlowCommand):
            help='Be verbose (more output).')
         sub = p.add_subparsers(title='Actions')
         cls.register_list(sub)
+        cls.register_list_stories(sub)
         cls.register_start(sub)
         cls.register_finish(sub)
         cls.register_publish(sub)
@@ -390,42 +392,67 @@ class ReleaseCommand(GitFlowCommand):
         gitflow.list('release', 'version', use_tagname=True,
                      verbose=args.verbose)
 
+    @classmethod
+    def register_list_stories(cls, parent):
+        p = parent.add_parser('list_stories',
+                              help='Lists all stories that are going to be'
+                              'released in the release of your choice.')
+        p.set_defaults(func=cls.run_list_stories)
+        p.add_argument('--version')
+
+    @staticmethod
+    def run_list_stories(args):
+        print
+        if args.version is None:
+            pivotal.Release.dump_all_releases()
+        else:
+            release = pivotal.Release(args.version)
+            release.dump_stories()
+
     #- start
     @classmethod
     def register_start(cls, parent):
         p = parent.add_parser('start', help='Start a new release branch.')
         p.set_defaults(func=cls.run_start)
         p.add_argument('-F', '--fetch', action='store_true',
-                       #:todo: get "origin" from config
                 help='Fetch from origin before performing local operation.')
         p.add_argument('version', action=NotEmpty)
-        p.add_argument('base', nargs='?')
 
     @staticmethod
     def run_start(args):
         gitflow = GitFlow()
-        # TODO(Tom): Fetch notees...
-        #print "Fetching git notes (metadata)..."
-        #gitflow.origin().fetch('refs/notes/*:refs/notes/*')
-        pivotal.show_release_summary(gitflow)
-        # NB: `args.version` is required since the branch must not yet exist
-        # :fixme: get default value for `base`
-        gitflow.start_transaction('create release branch %s (from %s)' % \
-                (args.version, args.base))
+        base = gitflow.develop_name()
+
+        #
+        # Git modifications.
+        #
+        sys.stdout.write('Creating release branch %s (from %s) ... ' % \
+                                  (args.version, base))
         try:
-            branch = gitflow.create('release', args.version, args.base,
+            branch = gitflow.create('release', args.version, base,
                                     fetch=args.fetch)
         except (NotInitialized, BranchTypeExistsError, BaseNotOnBranch):
+            print
             # printed in main()
             raise
         except Exception, e:
             die("Could not create release branch %r" % args.version, e)
+        print 'OK'
+
+        #
+        # Pivotal Tracker modifications.
+        #
+        release = pivotal.Release(args.version)
+        print
+        release.start()
+        print
         print "Follow-up actions:"
         print "- Bump the version number now!"
         print "- Start committing last-minute fixes in preparing your release"
         print "- When done, run:"
         print
         print "     git flow release finish", args.version
+        print
 
     #- finish
     @classmethod
