@@ -37,7 +37,7 @@ class Story(object):
         return self.get_state() == 'finished'
 
     def get_release(self):
-        for label in self._story['story'].get('labels', []):
+        for label in self.get_labels():
             m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
             if m:
                 return m.groups()[0]
@@ -45,9 +45,19 @@ class Story(object):
     def set_release(self, release):
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
-        if not re.match('[0-9]([.][0-9]+){2}'):
+        if not re.match('[0-9]([.][0-9]+){2}$', release):
             raise ValueError('Invalid format, should be X.Y.Z')
-        self._update(labels=['release-' + release])
+        self.add_label('release-' + release)
+
+    def get_labels(self):
+        return self._story['story'].get('labels', [])
+
+    def add_label(self, label):
+        labels = self.get_labels()
+        if label in labels:
+            return
+        labels.append(label)
+        self._update(labels=labels)
 
     def _update(self, **kwargs):
         try:
