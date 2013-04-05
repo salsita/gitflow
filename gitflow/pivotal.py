@@ -27,6 +27,13 @@ def _iter_current_stories():
         for story in iteration['stories']:
             yield Story.from_dict(story)
 
+def _iter_backlog_stories():
+    client = _get_client()
+    pid = _get_project_id()
+    for iteration in client.iterations.backlog(pid)['iterations']:
+        for story in iteration['stories']:
+            yield Story.from_dict(story)
+
 def _check_version_format(version):
     if not re.match('[0-9]+([.][0-9]+){2}$', version):
         raise IllegalVersionFormat(version)
@@ -66,6 +73,15 @@ class Story(object):
     def is_labeled(self, label):
         return label in self.get_labels()
 
+    def start(self):
+        self.set_state('started')
+
+    def is_started(self):
+        return self.get_state() == 'started'
+
+    def is_unstarted(self):
+        return self.get_state() == 'unstarted'
+
     #+++ Feature-specific stuff
     def is_feature(self):
         return self.get_type() == 'feature'
@@ -103,7 +119,20 @@ class Story(object):
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
         self.add_label('release-' + release)
+
+    def get_estimate(self):
+        assert self.is_feature()
+        return self._story['estimate']
+
+    def is_estimated(self):
+        assert self.is_feature()
+        return self.get_estimate() != -1
     #--- Feature-specific stuff
+
+    #+++ Bug-specific stuff
+    def is_bug(self):
+        return self.get_type() == 'bug'
+    #--- Bug-specific stuff
 
     def dump(self, highlight_labels=[]):
         story = self._story
@@ -220,25 +249,24 @@ def filter_stories(stories, states, types=None):
 
 
 def prompt_user_to_select_story():
-    [current, backlog] = get_iterations()
-
+    i = 1
+    stories = list()
     print Style.DIM + "--------- current -----------" + Style.RESET_ALL
-    current_stories = filter_stories(
-        [story for i in current['iterations'] for story in i['stories']],
-        ['unstarted', 'started'], ['feature'])
-    for i, s in enumerate(current_stories):
-        print_story(s, i+1)
-
+    for story in _iter_current_stories():
+        if (story.is_feature() or story.is_bug()) \
+                and (story.is_started() or story.is_unstarted()):
+            stories.append(story)
+            print_story(story.to_dict(), i)
+            i += 1
     print Style.DIM + "--------- backlog -----------" + Style.RESET_ALL
+    for story in _iter_backlog_stories():
+        if (story.is_feature() or story.is_bug()) \
+                and (story.is_started() or story.is_unstarted()) \
+                and story.is_estimated():
+            stories.append(story)
+            print_story(story.to_dict(), i)
+            i += 1
 
-    offset = len(current_stories)
-    backlog_stories = filter_stories(
-        [story for i in backlog.get('iterations', []) for story in i['stories']],
-        ['unstarted', 'started'])
-    for i, s in enumerate(backlog_stories):
-        print_story(s, offset+i+1)
-
-    stories = current_stories + backlog_stories
     # Prompt user to choose story index.
     print "Select story (or 'q' to quit): "
     index = raw_input()
@@ -260,7 +288,7 @@ def prompt_user_to_select_story():
 
     slug = prompt_user_to_select_slug(selected_story)
 
-    return [selected_story['id'], str(selected_story['id']) + '/' + slug]
+    return [selected_story.get_id(), str(selected_story.get_id()) + '/' + slug]
 
 
 def prompt_user_to_select_slug(story):
