@@ -424,11 +424,39 @@ class ReleaseCommand(GitFlowCommand):
         gitflow = GitFlow()
         base = gitflow.develop_name()
 
-        #
-        # Git modifications.
-        #
-        sys.stdout.write('Creating release branch %s (from %s) ... ' % \
-                                  (args.version, base))
+        #+ Pivotal Tracker modifications.
+        release = pivotal.Release(args.version)
+        any_assigned = False
+        print
+        print 'Stories already assigned to this release:'
+        for story in release.iter_stories():
+            sys.stdout.write('    ')
+            story.dump()
+            any_assigned = True
+        if not any_assigned:
+            print '    None'
+        print
+        any_candidate = False
+        print 'Stories to be newly assigned to this release:'
+        for story in release.iter_candidates():
+            sys.stdout.write('    ')
+            story.dump()
+            any_candidate = True
+        if not any_candidate:
+            print '    None'
+        print
+
+        if not any_assigned and not any_candidate:
+            raise SystemExit('No stories to be released, aborting...')
+
+        if release.prompt_for_confirmation():
+            release.start()
+        else:
+            raise SystemExit('Aborting...')
+
+        #+ Git modifications.
+        sys.stdout.write('Creating release branch (base being %s) ... ' \
+                         % base)
         try:
             branch = gitflow.create('release', args.version, base,
                                     fetch=args.fetch)
@@ -439,13 +467,6 @@ class ReleaseCommand(GitFlowCommand):
         except Exception, e:
             die("Could not create release branch %r" % args.version, e)
         print 'OK'
-
-        #
-        # Pivotal Tracker modifications.
-        #
-        release = pivotal.Release(args.version)
-        print
-        release.start()
         print
         print "Follow-up actions:"
         print "- Bump the version number now!"

@@ -385,15 +385,36 @@ class ReleaseBranchManager(BranchManager):
         :returns:
             The newly created :class:`git.refs.Head` reference.
         """
+        gitflow = self.gitflow
+        git = gitflow.git
+
+        # if the branch exists, we are done
+        try:
+            branch = self.by_name_prefix(version)
+            if branch in gitflow.repo.branches:
+                git.checkout(branch)
+                raise SystemExit("\nBranch already exists, " \
+                                 "checking it out and aborting!")
+        except NoSuchBranchError:
+            pass
+
         # there must be no active `release` branch
         if len(self.list()) > 0:
             raise BranchTypeExistsError(self.identifier)
+
         # there must be no tag for this version yet
-        tagname = self.gitflow.get('gitflow.prefix.versiontag') + version
-        if tagname in self.gitflow.repo.tags:
+        tagname = gitflow.get('gitflow.prefix.versiontag') + version
+        if tagname in gitflow.repo.tags:
             raise TagExistsError(tagname)
-        return super(ReleaseBranchManager, self).create(
+
+        # create the release branch
+        b = super(ReleaseBranchManager, self).create(
             version, base, fetch=fetch, must_be_on_default_base=True)
+
+        # push the newly created branch
+        git.push(gitflow.origin_name(), self.by_name_prefix(version))
+
+        return b
 
 
     def finish(self, name, fetch=False, rebase=False, keep=False,

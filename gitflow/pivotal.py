@@ -23,14 +23,20 @@ def _get_project_id():
 def _iter_current_stories():
     client = _get_client()
     pid = _get_project_id()
-    for iteration in client.iterations.current(pid)['iterations']:
+    iterations = client.iterations.current(pid)
+    if 'iterations' not in iterations:
+        return
+    for iteration in iterations['iterations']:
         for story in iteration['stories']:
             yield Story.from_dict(story)
 
 def _iter_backlog_stories():
     client = _get_client()
     pid = _get_project_id()
-    for iteration in client.iterations.backlog(pid)['iterations']:
+    iterations = client.iterations.backlog(pid)
+    if 'iterations' not in iterations:
+        return
+    for iteration in iterations['iterations']:
         for story in iteration['stories']:
             yield Story.from_dict(story)
 
@@ -50,6 +56,9 @@ class Story(object):
 
     def get_id(self):
         return self._story['id']
+
+    def get_name(self):
+        return self._story['name']
 
     def get_type(self):
         return self._story['story_type']
@@ -161,6 +170,9 @@ class Story(object):
         # Commit changes into our internal story instance as well.
         self._story.update(kwargs)
 
+    def to_dict(self):
+        return self._story
+
     @classmethod
     def from_dict(cls, story):
         t = type('Story', (cls,), dict(_story=story))
@@ -176,15 +188,8 @@ class Release(object):
         self._current_stories = list(_iter_current_stories())
 
     def start(self):
-        print 'Following stories were added to release %s:' % self._version
-        for story in self._current_stories:
-            if story.is_feature() and \
-                    story.is_finished() and \
-                    story.get_release() is None:
-                story.assign_to_release(self._version)
-                sys.stdout.write('    ')
-                story.dump()
-        print '    OK'
+        for story in self.iter_candidates():
+            story.assign_to_release(self._version)
 
     def deliver(self):
         print 'Following stories were delivered as of release %s:' \
@@ -194,9 +199,22 @@ class Release(object):
             sys.stdout.write('    ')
             story.dump()
 
+    def prompt_for_confirmation(self):
+        answer = raw_input("Do you wish to start the release? [y/N]: ")
+        if answer.lower() == 'y':
+            return True
+        return False
+
     def iter_stories(self):
         for story in self._current_stories:
             if story.is_labeled('release-' + self._version):
+                yield story
+
+    def iter_candidates(self):
+        for story in self._current_stories:
+            if story.is_feature() and \
+                    story.is_finished() and \
+                    story.get_release() is None:
                 yield story
 
     def dump_stories(self):
@@ -251,13 +269,18 @@ def filter_stories(stories, states, types=None):
 def prompt_user_to_select_story():
     i = 1
     stories = list()
+    any_available = False
     print Style.DIM + "--------- current -----------" + Style.RESET_ALL
     for story in _iter_current_stories():
         if (story.is_feature() or story.is_bug()) \
                 and (story.is_started() or story.is_unstarted()):
             stories.append(story)
             print_story(story.to_dict(), i)
+            any_available = True
             i += 1
+    if not any_available:
+        print 'No story available'
+    any_available = False
     print Style.DIM + "--------- backlog -----------" + Style.RESET_ALL
     for story in _iter_backlog_stories():
         if (story.is_feature() or story.is_bug()) \
@@ -265,7 +288,15 @@ def prompt_user_to_select_story():
                 and story.is_estimated():
             stories.append(story)
             print_story(story.to_dict(), i)
+            any_available = True
             i += 1
+    if not any_available:
+        print 'No story available'
+    print Style.DIM + "-----------------------------" + Style.RESET_ALL
+    print
+
+    if len(stories) == 0:
+        raise SystemExit('No story to start, aborting...')
 
     # Prompt user to choose story index.
     print "Select story (or 'q' to quit): "
@@ -294,7 +325,7 @@ def prompt_user_to_select_story():
 def prompt_user_to_select_slug(story):
     print ("Please choose short story description (will be slugified " +
         "and used as part of the branch name). Don't use whitespace.")
-    slug_hint = slugify(get_story_bold_part(story['name']))
+    slug_hint = slugify(get_story_bold_part(story.get_name()))
     print "Story description (default: '%s'):" % slug_hint
     slug = raw_input().strip() or slug_hint
     if any(c in (string.whitespace + '/') for c in slug):
