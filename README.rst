@@ -40,7 +40,7 @@ Or, if you'd like to use ``pip`` instead (recommended!)::
 
     pip install salsita-gitflow
 
-``salsita-gitflow`` requires at least Python 2.5.
+``salsita-gitflow`` requires Python 2.7.
 
 Setting it up
 -------------
