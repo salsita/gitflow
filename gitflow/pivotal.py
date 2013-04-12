@@ -9,16 +9,17 @@ import re
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
                                 ReleaseAlreadyAssigned, IllegalVersionFormat,
-                                StatusError)
+                                StatusError, NoSuchBranchError)
 
+
+_gitflow = GitFlow()
 
 def _get_client():
-    gitflow = GitFlow()
-    token = gitflow.get('workflow.token')
+    token = _gitflow.get('workflow.token')
     return pt.PivotalClient(token=token)
 
 def _get_project_id():
-    return GitFlow().get('workflow.projectid')
+    return _gitflow.get('workflow.projectid')
 
 def _iter_current_stories():
     client = _get_client()
@@ -296,7 +297,7 @@ def prompt_user_to_select_story():
     print
 
     if len(stories) == 0:
-        raise SystemExit('No story to start, aborting...')
+        raise SystemExit('No story available, aborting!')
 
     # Prompt user to choose story index.
     print "Select story (or 'q' to quit): "
@@ -315,11 +316,24 @@ def prompt_user_to_select_story():
 
     # We're expecting input to start from 1, so we have to
     # subtract one here to get the list index.
-    selected_story = stories[index - 1]
+    story = stories[index - 1]
 
-    slug = prompt_user_to_select_slug(selected_story)
+    try:
+        name = _gitflow.nameprefix_or_current('feature', str(story.get_id()))
+        full_name = _gitflow.get_prefix('feature') + name
+        print 'A branch associated with this story already exists.'
+        d = raw_input('Do you wish to checkout %s? [y/N]: ' % full_name)
+        if d.lower() == 'y':
+            _gitflow.git.checkout(full_name)
+            raise SystemExit('So be it.')
+        else:
+            raise SystemExit('Operation canceled.')
+    except NoSuchBranchError:
+        pass
 
-    return [selected_story.get_id(), str(selected_story.get_id()) + '/' + slug]
+    slug = prompt_user_to_select_slug(story)
+
+    return [story.get_id(), str(story.get_id()) + '/' + slug]
 
 
 def prompt_user_to_select_slug(story):
@@ -368,9 +382,8 @@ def slugify(story_name, max_length=25):
 
 
 def get_iterations():
-    gitflow = GitFlow()
-    token = gitflow.get('workflow.token')
-    project_id = gitflow.get('workflow.projectid')
+    token = _gitflow.get('workflow.token')
+    project_id = _gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     current = client.iterations.current(project_id)
     backlog = client.iterations.backlog(project_id)
@@ -378,9 +391,8 @@ def get_iterations():
 
 
 def update_story(story_id, **kwargs):
-    gitflow = GitFlow()
-    token = gitflow.get('workflow.token')
-    project_id = gitflow.get('workflow.projectid')
+    token = _gitflow.get('workflow.token')
+    project_id = _gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     try:
         client.stories.update(
@@ -392,18 +404,16 @@ def update_story(story_id, **kwargs):
 
 
 def add_comment_to_story(story_id, msg):
-    gitflow = GitFlow()
-    token = gitflow.get('workflow.token')
-    project_id = gitflow.get('workflow.projectid')
+    token = _gitflow.get('workflow.token')
+    project_id = _gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     client.stories.add_comment(
         project_id=project_id, story_id=story_id, text =msg)
 
 
 def get_story(story_id):
-    gitflow = GitFlow()
-    token = gitflow.get('workflow.token')
-    project_id = gitflow.get('workflow.projectid')
+    token = _gitflow.get('workflow.token')
+    project_id = _gitflow.get('workflow.projectid')
     client = pt.PivotalClient(token=token)
     return client.stories.get(project_id=project_id, story_id=story_id)
 
