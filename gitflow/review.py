@@ -11,29 +11,28 @@ from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
 
 class ReviewNotAcceptedYet(GitflowError): pass
 
+_gitflow = GitFlow()
+
 def _get_repo_id():
-    gitflow = GitFlow()
-    return gitflow.get('reviewboard.repoid')
+    return _gitflow.get('reviewboard.repoid')
 
 def _get_server():
-    gitflow = GitFlow()
-    return gitflow.get('reviewboard.server')
+    return _gitflow.get('reviewboard.server')
 
 def _get_develop_name():
-    gitflow = GitFlow()
-    return gitflow.develop_name()
+    return _gitflow.develop_name()
 
 def _get_branch(identifier, name):
-    gitflow = GitFlow()
-    prefix = gitflow.get_prefix(identifier)
-    name = gitflow.nameprefix_or_current(identifier, name)
+    prefix = _gitflow.get_prefix(identifier)
+    name = _gitflow.nameprefix_or_current(identifier, name)
     return prefix + name
 
 
 class BranchReview(object):
-    def __init__(self, branch):
+    def __init__(self, branch, upstream=None):
+        assert branch in _gitflow.repo.refs
         self._branch = branch
-        # XXX: Requires the cookie for now
+        self._upstream = upstream
         self._client = rb_ext.make_rbclient(_get_server(), '', '')
 
     def __getattr__(self, name):
@@ -46,20 +45,23 @@ class BranchReview(object):
         return self._rid
 
     def post(self):
-        assert self._rid
-        if not self._rid:
-            return
+        assert self._upstream
         cmd = ['rbt', 'post',
                '--branch', self._branch,
-               '--parent', _get_develop_name(),
+               '--parent', self._upstream,
                '--guess-fields']
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
             cmd.append('--review-request-id')
             cmd.append(str(self._rid))
         else:
-            sys.stdout.write('new review) ... ')
-        sub.check_output(cmd)
+            sys.stdout.write('new review ... ')
+        print
+        print
+        print '>>> rbt output'
+        sub.check_call(cmd)
+        print '<<< rbt output'
+        print
 
     def submit(self):
         assert self._rid
@@ -86,15 +88,21 @@ class BranchReview(object):
             return reviews[0]['id']
 
     @classmethod
-    def from_prefix(cls, prefix):
+    def from_prefix(cls, prefix, upstream=None):
         client = rb_ext.make_rbclient(_get_server(), '', '')
         options = dict(repository=_get_repo_id())
         reviews = client.get_review_requests(options=options)
         for review in reviews:
             if review['branch'].startswith(prefix):
                 t = type('BranchReview', (cls,), dict(_rid=review['id']))
-                return t(review['branch'])
+                return t(review['branch'], upstream)
         raise NoSuchBranchError('no review for branch prefixed with ' + prefix)
+
+    @classmethod
+    def from_identifier(cls, identifier, name, upstream=None):
+        prefix = _gitflow.get_prefix(identifier)
+        name = _gitflow.nameprefix_or_current(identifier, name)
+        return cls(prefix + name, upstream)
 
 
 def post_review(self, identifier, name, post_new):
@@ -129,9 +137,8 @@ def post_review(self, identifier, name, post_new):
         # Create a new request.
         cmd += ['--summary', "'%s'" % story['story']['name']]
     else:
-        gitflow = core.GitFlow()
         req = rb_ext.get_latest_review_request_for_branch(
-            gitflow.get('reviewboard.server'), branch.name)
+            _gitflow.get('reviewboard.server'), branch.name)
         if req:
             # Update an existing request.
             cmd += ['-r', str(req['id'])]

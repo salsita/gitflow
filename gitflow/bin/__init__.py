@@ -234,13 +234,13 @@ class FeatureCommand(GitFlowCommand):
         print 'OK'
 
         #+++ Review Board manipulation
-        sys.stdout.write('Posting review ... ')
+        sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
         if not args.no_review:
-            BranchReview('feature', name).post()
+            BranchReview.from_identifier('feature', name, upstream).post()
         print 'OK'
 
         #+++ Git manipulation
-        sys.stdout.write('Finishing feature branch ... upstream is %s ... ' \
+        sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
                          % upstream)
         gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
