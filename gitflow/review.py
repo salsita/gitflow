@@ -19,6 +19,9 @@ def _get_repo_id():
 def _get_server():
     return _gitflow.get('reviewboard.server')
 
+def _get_client():
+    return rb_ext.make_rbclient(_get_server(), '', '')
+
 def _get_develop_name():
     return _gitflow.develop_name()
 
@@ -28,12 +31,17 @@ def _get_branch(identifier, name):
     return prefix + name
 
 
+def list_repos():
+    repos = _get_client().repositories()
+    return [(r.id, r.name) for r in repos]
+
+
 class BranchReview(object):
     def __init__(self, branch, upstream=None):
         assert branch in _gitflow.repo.refs
         self._branch = branch
         self._upstream = upstream
-        self._client = rb_ext.make_rbclient(_get_server(), '', '')
+        self._client = _get_client()
 
     def __getattr__(self, name):
         if name == '_rid':
@@ -89,7 +97,7 @@ class BranchReview(object):
 
     @classmethod
     def from_prefix(cls, prefix, upstream=None):
-        client = rb_ext.make_rbclient(_get_server(), '', '')
+        client = _get_client()
         options = dict(repository=_get_repo_id())
         reviews = client.get_review_requests(options=options)
         for review in reviews:

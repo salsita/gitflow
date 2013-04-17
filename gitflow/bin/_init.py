@@ -9,6 +9,8 @@ git-flow init
 # Distributed under a BSD-like license. For full terms see the file LICENSE.txt
 #
 
+import sys
+
 try:
     # this will trigger readline functionality for raw_input
     import readline
@@ -20,6 +22,9 @@ from gitflow.core import GitFlow as CoreGitFlow, warn, info
 
 from gitflow.exceptions import (AlreadyInitialized, NotInitialized,
                                 NoSuchLocalBranchError, NoSuchBranchError)
+
+import gitflow.review as rb
+import gitflow.pivotal as pt
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
@@ -124,6 +129,36 @@ def _ask_name(args, name, question):
     if not gitflow.get(name, None) or args.force:
         _ask_config(args, name, question)
 
+def _pick(title, source):
+    print
+    print 'Please choose one of the following %s:' % title
+    msg = '    Loading...'
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+    suggestions = source()
+    sys.stdout.write('\r' * len(msg))
+    while True:
+        i = 0
+        for sid, sname in suggestions:
+            i += 1
+            print '    [%d] %s' % (i, sname)
+        a = raw_input("Insert the sequence number (or 'q' to quit): ")
+        if a == 'q':
+            raise SystemExit('Operation canceled.')
+        try:
+            answer = int(a)
+        except ValueError:
+            pass
+        if answer >= 1 and answer <= i:
+            return suggestions[answer-1]
+
+def _ask_pt_projid():
+    gitflow.set('workflow.projectid',
+                _pick('Pivotal Tracker projects', pt.list_projects)[0])
+
+def _ask_rb_repoid():
+    gitflow.set('reviewboard.repoid',
+                _pick('Review Board repositories', rb.list_repos)[0])
 
 def run_default(args):
     global gitflow
@@ -169,6 +204,9 @@ def run_default(args):
     _ask_prefix(args, "hotfix", "Hotfix branches")
     _ask_prefix(args, "support", "Support branches")
     _ask_prefix(args, "versiontag", "Version tag prefix")
+
+    _ask_pt_projid()
+    _ask_rb_repoid()
 
     # assert the gitflow repo has been correctly initialized
     assert gitflow.is_initialized()

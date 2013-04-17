@@ -46,6 +46,10 @@ def _check_version_format(version):
         raise IllegalVersionFormat(version)
 
 
+def list_projects():
+    projects = _get_client().projects.all()['projects']
+    return [(p['id'], p['name']) for p in projects]
+
 class Story(object):
     def __init__(self, story_id, _skip_story_download=False):
         self._project_id = _get_project_id()
