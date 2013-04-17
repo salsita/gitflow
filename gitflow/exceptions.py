@@ -44,7 +44,8 @@ class NoSuchRemoteError(ObjectError): pass
 
 class BaseNotOnBranch(ObjectError):
     def __str__(self):
-        return ("Given base '%s' is not a valid commit on '%s'."
+        return ("Branch '%s' found in the repository," \
+                "but it is diverging from '%s'" \
                 % (self.args[1], self.args[0]))
 
 
