@@ -120,6 +120,10 @@ class Story(object):
         assert self.is_feature()
         return self.get_state() == 'delivered'
 
+    def is_rejected(self):
+        assert self.is_feature()
+        return self.get_state() == 'rejected'
+
     def get_release(self):
         assert self.is_feature()
         for label in self.get_labels():
@@ -278,7 +282,9 @@ def prompt_user_to_select_story():
     print Style.DIM + "--------- current -----------" + Style.RESET_ALL
     for story in _iter_current_stories():
         if (story.is_feature() or story.is_bug()) \
-                and (story.is_started() or story.is_unstarted()):
+                and (story.is_started()
+                        or story.is_unstarted()
+                        or story.is_rejected()):
             stories.append(story)
             print_story(story.to_dict(), i)
             any_available = True
