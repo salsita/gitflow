@@ -514,6 +514,31 @@ class ReleaseCommand(GitFlowCommand):
         origin  = gitflow.origin()
         version = gitflow.name_or_current('release', args.version)
 
+        #+++ Check QA
+        release = pivotal.Release(version)
+        sys.stdout.write("Checking if all relevant stories have been QA'd ... ")
+        try:
+            release.try_deliver()
+        except GitflowError:
+            print 'FAIL'
+            raise
+        print 'OK'
+
+        #+++ Close (submit) all relevant reviews in Review Board
+        print 'Submitting all relevant review requests ... '
+        for story in release.iter_stories():
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                r = BranchReview.from_prefix(prefix)
+            except NoSuchBranchError, e:
+                if not args.ignore_missing_reviews:
+                    raise
+                print '    ' + str(e)
+                continue
+            r.submit()
+            print '    ' + str(r.get_id())
+        print '    OK'
+
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)
         tagging_info = None
@@ -522,7 +547,7 @@ class ReleaseCommand(GitFlowCommand):
                 sign=args.sign or args.signingkey,
                 signingkey=args.signingkey,
                 message=args.message)
-        release = gitflow.finish('release', version,
+        gitflow.finish('release', version,
                                  fetch=(not args.no_fetch), rebase=False,
                                  keep=args.keep, force_delete=False,
                                  tagging_info=tagging_info, push=(not args.no_push))
@@ -538,7 +563,6 @@ class ReleaseCommand(GitFlowCommand):
         feature_prefix = gitflow.get_prefix('feature')
         # refs = [<type>/<id>/...]
         refs = [str(ref)[len(origin_prefix):] for ref in origin.refs]
-        release = pivotal.Release(version)
         for story in release.iter_stories():
             # prefix = <feature-prefix>/<id>
             prefix = feature_prefix + str(story.get_id())
@@ -578,21 +602,6 @@ class ReleaseCommand(GitFlowCommand):
             print '    ' + branch
         refspecs = [(':' + b) for b in remote_branches]
         git.push(str(origin), *refspecs)
-        print '    OK'
-
-        #+++ Close (submit) all relevant reviews in Review Board
-        print 'Submitting all relevant review requests ... '
-        for story in release.iter_stories():
-            prefix = feature_prefix + str(story.get_id())
-            try:
-                r = BranchReview.from_prefix(prefix)
-            except NoSuchBranchError, e:
-                if not args.ignore_missing_reviews:
-                    raise
-                print '    ' + str(e)
-                continue
-            r.submit()
-            print '    ' + str(r.get_id())
         print '    OK'
 
         #+++ Deliver all relevant stories in Pivotal Tracker
