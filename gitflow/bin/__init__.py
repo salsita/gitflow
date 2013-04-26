@@ -516,7 +516,7 @@ class ReleaseCommand(GitFlowCommand):
 
         #+++ Check QA
         release = pivotal.Release(version)
-        sys.stdout.write("Checking if all relevant stories have been QA'd ... ")
+        print "Checking if all relevant stories have been QA'd ... "
         try:
             release.try_deliver()
         except GitflowError:
