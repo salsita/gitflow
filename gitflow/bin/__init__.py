@@ -104,6 +104,24 @@ class InitCommand(GitFlowCommand):
 
     @staticmethod
     def run(args):
+        gitflow = GitFlow()
+        err = False
+        for option in ('workflow.token',
+                       'reviewboard.url',
+                       'reviewboard.server'):
+            try:
+                gitflow.get(option)
+            except Exception:
+                err = True
+                print """
+Git config '%s' missing, please fill it in by executing
+
+    $ git config [--global] %s <value>
+""" % (option, option)
+
+        if err:
+            raise SystemExit('Operation canceled.')
+
         from . import _init
         _init.run_default(args)
 
