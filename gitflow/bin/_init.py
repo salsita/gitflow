@@ -148,7 +148,8 @@ def _pick(title, source):
         try:
             answer = int(a)
         except ValueError:
-            pass
+            print 'Please specify a number betweet 1 and %i:' % i
+            continue
         if answer >= 1 and answer <= i:
             return suggestions[answer-1]
 
