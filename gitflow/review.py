@@ -37,11 +37,13 @@ def list_repos():
 
 
 class BranchReview(object):
-    def __init__(self, branch, upstream=None):
+    def __init__(self, branch, rev_range=None):
         assert branch in _gitflow.repo.refs
+        assert len(rev_range) == 2
         self._branch = branch
-        self._upstream = upstream
         self._client = _get_client()
+        if rev_range:
+            self._rev_range = rev_range
 
     def __getattr__(self, name):
         if name == '_rid':
@@ -53,10 +55,10 @@ class BranchReview(object):
         return self._rid
 
     def post(self):
-        assert self._upstream
+        assert self._rev_range
         cmd = ['rbt', 'post',
                '--branch', self._branch,
-               '--parent', self._upstream,
+               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range),
                '--guess-fields']
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
@@ -96,14 +98,14 @@ class BranchReview(object):
             return reviews[0]['id']
 
     @classmethod
-    def from_prefix(cls, prefix, upstream=None):
+    def from_prefix(cls, prefix):
         client = _get_client()
         options = dict(repository=_get_repo_id())
         reviews = client.get_review_requests(options=options)
         for review in reviews:
             if review['branch'].startswith(prefix):
                 t = type('BranchReview', (cls,), dict(_rid=review['id']))
-                return t(review['branch'], upstream)
+                return t(review['branch'])
         raise NoSuchBranchError('no review for branch prefixed with ' + prefix)
 
     @classmethod

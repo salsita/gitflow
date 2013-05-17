@@ -224,23 +224,26 @@ class FeatureCommand(GitFlowCommand):
     @staticmethod
     def run_finish(args):
         gitflow = GitFlow()
+        repo = gitflow.repo
+
+        f_prefix = gitflow.get_prefix('feature')
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
+        full_name = f_prefix + name
 
         #+++ PT story stuff
         sys.stdout.write('Connecting to Pivotal Tracker ... ')
         story_id = pivotal.get_story_id_from_branch_name(name)
         story = pivotal.Story(story_id)
-        finished = story.get_state() == 'finished'
         release = story.get_release()
 
         # Get the state of the feature.
-        if finished:
+        if story.is_finished():
             sys.stdout.write('story already finished ... ')
             if release:
                 # Merge into the release branch.
-                prefix = gitflow.get_prefix('release')
+                r_prefix = gitflow.get_prefix('release')
                 short_name = gitflow.nameprefix_or_current('release', release)
-                upstream = prefix + short_name
+                upstream = r_prefix + short_name
             else:
                 # Merge into the develop branch and finish the story.
                 upstream = gitflow.develop_name()
@@ -251,11 +254,8 @@ class FeatureCommand(GitFlowCommand):
             upstream = gitflow.develop_name()
         print 'OK'
 
-        #+++ Review Board manipulation
-        sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
-        if not args.no_review:
-            BranchReview.from_identifier('feature', name, upstream).post()
-        print 'OK'
+        rev_to = repo.commit(full_name).hexsha
+        rev_range = [repo.git.merge_base(upstream, rev_to), rev_to]
 
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
@@ -264,6 +264,12 @@ class FeatureCommand(GitFlowCommand):
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=(not args.no_push))
+        print 'OK'
+
+        #+++ Review Board manipulation
+        sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
+        if not args.no_review:
+            BranchReview.from_identifier('feature', name, rev_range).post()
         print 'OK'
 
     #- checkout
