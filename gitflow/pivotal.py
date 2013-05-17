@@ -99,47 +99,50 @@ class Story(object):
     def is_unstarted(self):
         return self.get_state() == 'unstarted'
 
-    #+++ Feature-specific stuff
-    def is_feature(self):
-        return self.get_type() == 'feature'
-
+    #+++ Bug- & Feature-specific stuff
     def finish(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         if self.get_state() != 'started':
             raise StatusError('Feature not started: ' + str(self.get_id()))
         self.set_state('finished')
 
     def is_finished(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         return self.get_state() == 'finished'
 
     def deliver(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         if self.get_state() != 'finished':
             raise StatusError('Feature not finished: ' + str(self.get_id()))
         self.set_state('delivered')
 
     def is_delivered(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         return self.get_state() == 'delivered'
 
     def is_rejected(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         return self.get_state() == 'rejected'
 
     def get_release(self):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         for label in self.get_labels():
             m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
             if m:
                 return m.groups()[0]
 
     def assign_to_release(self, release):
-        assert self.is_feature()
+        assert self.is_feature() or self.is_bug()
         _check_version_format(release)
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
         self.add_label('release-' + release)
+    #--- Bug- & Feature-specific stuff
+
+
+    #+++ Feature-specific stuff
+    def is_feature(self):
+        return self.get_type() == 'feature'
 
     def get_estimate(self):
         assert self.is_feature()
@@ -154,6 +157,11 @@ class Story(object):
     def is_bug(self):
         return self.get_type() == 'bug'
     #--- Bug-specific stuff
+
+    #+++ Chore-specific stuff
+    def is_chore(self):
+        return self.get_type() == 'chore'
+    #--- Chore-specific stuff
 
     def dump(self, highlight_labels=[]):
         story = self._story
@@ -306,13 +314,14 @@ def prompt_user_to_select_story():
     any_available = False
     print Style.DIM + "--------- backlog -----------" + Style.RESET_ALL
     for story in _iter_backlog_stories():
-        if (story.is_feature() or story.is_bug()) \
-                and (story.is_started() or story.is_unstarted()) \
-                and story.is_estimated():
-            stories.append(story)
-            print_story(story.to_dict(), i)
-            any_available = True
-            i += 1
+        if story.is_chore():
+            continue
+        if story.is_feature() and not story.is_estimated():
+            continue
+        stories.append(story)
+        print_story(story.to_dict(), i)
+        any_available = True
+        i += 1
     if not any_available:
         print 'No story available'
     print Style.DIM + "-----------------------------" + Style.RESET_ALL
@@ -347,6 +356,7 @@ def prompt_user_to_select_story():
         d = raw_input('Do you wish to checkout %s? [y/N]: ' % full_name)
         if d.lower() == 'y':
             _gitflow.git.checkout(full_name)
+            story.start()
             raise SystemExit('So be it.')
         else:
             raise SystemExit('Operation canceled.')
