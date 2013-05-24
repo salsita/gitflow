@@ -10,6 +10,7 @@ git-flow init
 #
 
 import sys
+import re
 
 try:
     # this will trigger readline functionality for raw_input
@@ -21,13 +22,26 @@ except:
 from gitflow.core import GitFlow as CoreGitFlow, warn, info
 
 from gitflow.exceptions import (AlreadyInitialized, NotInitialized,
-                                NoSuchLocalBranchError, NoSuchBranchError)
+                                NoSuchLocalBranchError, NoSuchBranchError,
+                                IllegalCommunicationProtocol, RemoteNotFound)
 
 import gitflow.review as rb
 import gitflow.pivotal as pt
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
+
+
+def _ensure_SSH():
+    gitflow_origin = gitflow.get('gitflow.origin')
+    try:
+        origin_url = gitflow.get('remote.' + gitflow_origin + '.url')
+    except Exception:
+        raise RemoteNotFound(
+                "Please configure git remote '{0}' before proceesing further." \
+                        .format(gitflow_origin))
+    if re.match('(https?://|git://)', origin_url):
+        raise IllegalCommunicationProtocol("Only SSH remotes are supported.")
 
 class GitFlow(CoreGitFlow):
 
@@ -175,6 +189,10 @@ def run_default(args):
 
     _ask_name(args, "origin", "Remote name to use as origin in git flow")
  
+    # Make sure that origin uses SSH protocol for communication,
+    # otherwise Review Board is going to fail.
+    _ensure_SSH()
+
     #-- add a master branch if no such branch exists yet
     if gitflow.has_master_configured() and not args.force:
         master_branch = gitflow.master_name()

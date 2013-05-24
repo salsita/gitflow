@@ -27,6 +27,8 @@ class AlreadyInitialized(StatusError):
                 "To force reinitialization use: git flow init -f")
 class ReleaseAlreadyAssigned(StatusError): pass
 class MultipleReviewRequestsForBranch(StatusError): pass
+class IllegalCommunicationProtocol(StatusError): pass
+class RemoteNotFound(StatusError): pass
 
 class MergeConflict(StatusError):
     def __str__(self):
