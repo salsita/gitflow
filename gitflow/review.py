@@ -1,4 +1,6 @@
+import re
 import subprocess as sub
+import difflib as diff
 import gitflow.pivotal as pivotal
 import reviewboard.extensions as rb_ext
 import gitflow.core as core
@@ -204,3 +206,26 @@ def find_last_patch_parent(develop_name, branch_name):
         # Get the hash of the second most recent merge.
         return lines[1].split(' ')[0]
 
+def get_feature_ancestor(feature):
+    develop = _gitflow.develop_name()
+
+    # Get all commits being a part of the respective branches.
+    develop_ancestors = sub.check_output(
+            ['git', 'rev-list', '--first-parent', develop])
+    feature_ancestors = sub.check_output(
+            ['git', 'rev-list', '--first-parent', feature])
+
+    # Compute the diff between the lists.
+    ancestor_diff = diff.unified_diff(
+            develop_ancestors.split('\n'), feature_ancestors.split('\n'))
+
+    # The first line to match this is the ancestor we are looking for.
+    pattern = re.compile(' [0-9a-f]{40}$')
+    for line in ancestor_diff:
+        if pattern.match(line):
+            ancestor = line.strip()
+            break
+
+    # Just to be sure, explode as soon as possible.
+    assert ancestor
+    return ancestor

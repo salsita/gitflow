@@ -29,7 +29,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError)
 import gitflow.pivotal as pivotal
-from gitflow.review import BranchReview, ReviewNotAcceptedYet
+from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
+                            get_feature_ancestor)
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
@@ -254,9 +255,6 @@ class FeatureCommand(GitFlowCommand):
             upstream = gitflow.develop_name()
         print 'OK'
 
-        rev_to = repo.commit(full_name).hexsha
-        rev_range = [repo.git.merge_base(upstream, rev_to), rev_to]
-
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
                          % upstream)
@@ -266,8 +264,11 @@ class FeatureCommand(GitFlowCommand):
                        tagging_info=None, push=(not args.no_push))
         print 'OK'
 
-        #+++ Review Board manipulation
+        #+++ Review Board Part II: Post the review itself
         sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
+        rev_range = [get_feature_ancestor(full_name),
+                     repo.commit(full_name).hexsha]
+
         if not args.no_review:
             BranchReview.from_identifier('feature', name, rev_range).post()
         print 'OK'

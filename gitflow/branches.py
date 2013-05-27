@@ -250,9 +250,7 @@ class BranchManager(object):
             # already merged, nothing more to do
             return
 
-        kwargs = dict()
-        if not self._is_single_commit_branch(into, full_name):
-            kwargs['no_ff'] = True
+        kwargs = dict(no_ff=True)
         if message is not None:
             message = (message
                        % dict(name=full_name, identifier=self.identifier,
