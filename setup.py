@@ -29,7 +29,8 @@ install_requires = [
     'simplejson',
     'httplib2',
     'colorama',
-    'rbtools'
+    'rbtools',
+    'gitdb>=0.5.1'
 ]
 
 setup(
