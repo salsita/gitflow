@@ -46,8 +46,8 @@ Setting it up
 -------------
 Global (same for all projects)::
 
-* git config --global reviewboard.url https://dev.salsitasoft.com/rb
-* git config --global reviewboard.server https://dev.salsitasoft.com/rb
+* git config --global reviewboard.url https://example.com/rb/ (the trailing slash MUST be there)
+* git config --global reviewboard.server https://example.com/rb/
 * git config --global workflow.token <your PT token>
 
 You will be prompted for the project-specific settings during ``git flow init``.
