@@ -1,12 +1,12 @@
-========
-git-flow
-========
+================
+Salsita git-flow
+================
 
 Pure-Python implementation of Git extensions to provide high-level
 repository operations for Vincent Driessen's
 `branching model <http://nvie.com/git-model>`_.
 
-We've added a few tweaks to make it cooperate with Pivotal Tracker and ReviewBoard.
+We've added a few tweaks to make it cooperate with Pivotal Tracker and Review Board.
 
 
 Getting started
@@ -30,7 +30,7 @@ Or have a look at one of these screen casts:
 
 
 Installing salsita-gitflow
-====================
+==========================
 
 You can install ``salsita gitflow``, using::
 
@@ -46,20 +46,17 @@ Setting it up
 -------------
 Global (same for all projects)::
 
-* git config --global reviewboard.url https://dev.salsitasoft.com/rb
-* git config --global reviewboard.server https://dev.salsitasoft.com/rb
+* git config --global reviewboard.url https://example.com/rb/ (the trailing slash MUST be there)
+* git config --global reviewboard.server https://example.com/rb/
 * git config --global workflow.token <your PT token>
 
-Local (project specific)::
-
-* git config workflow.projectid <PT project id>
-* git config reviewboard.repoid <repo id in RB>
+You will be prompted for the project-specific settings during ``git flow init``.
 
 If you have the original `git-flow <https://github.com/nvie/gitflow>` installed, just go to the git bin folder and delete everything that starts with ``git-flow``.
 
 
 Integration with your shell
------------------------------
+---------------------------
 
 For those who use the `Bash <http://www.gnu.org/software/bash/>`_ or
 `ZSH <http://www.zsh.org>`_ shell, please check out the excellent work
@@ -68,9 +65,11 @@ on the
 project by `bobthecow <http://github.com/bobthecow>`_. It offers
 tab-completion for all git-flow subcommands and branch names.
 
+Please note that some subcommands have changed in this fork, so it is
+questionable if the completions still make sense.
 
 Please help out
-==================
+===============
 
 This project is still under development. Feedback and suggestions are
 very welcome and I encourage you to use the `Issues list
@@ -80,8 +79,27 @@ feedback.
 Feel free to fork this repo and to commit your additions. For a list
 of all contributors, please see the :file:`AUTHORS.txt`.
 
+Salsita itself is using `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
+for code review.
+
 You will need :module:`unittest2` to run the tests.
 
+On the cutting edge
+===================
+
+The source code here on GitHub is the one that has been code reviewed.
+If you, however, wish to try the changes that are still yet to be reviewed,
+you can visit `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
+and checkout the commit you want to try/test. If that is the case, we advice you to:
+
+#. Use `virtualenv <https://pypi.python.org/pypi/virtualenv>`_ to create the testing environment.
+#. Once the environment is activated, get the commit you want:
+
+   #. ``mkdir src && cd src``
+   #. ``git init``
+   #. Go to the commit page in Gerrit, get the exact command to execute, e.g. ``git fetch https://dev.salsitasoft.com/gerrit/gitflow refs/changes/02/2/1 && git checkout FETCH_HEAD``
+   #. ``python setup.py install``
+   #. The git flow commands should be available to you now, just make sure you are using the right one (``man which``)
 
 License terms
 ==================
