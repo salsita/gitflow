@@ -111,7 +111,15 @@ class InitCommand(GitFlowCommand):
                        'reviewboard.url',
                        'reviewboard.server'):
             try:
-                gitflow.get(option)
+                value = gitflow.get(option)
+                if option == 'reviewboard.url' and not value.endswith('/'):
+                    err = True
+                    print """
+Git config key 'reviewboard.url' must contain a trailing slash.
+Update your configuration by executing
+
+    $ git config [--global] reviewboard.url %s
+""" % (value + '/')
             except Exception:
                 err = True
                 print """
@@ -264,13 +272,20 @@ class FeatureCommand(GitFlowCommand):
                        tagging_info=None, push=(not args.no_push))
         print 'OK'
 
-        #+++ Review Board Part II: Post the review itself
+        #+++ Review Request
+        if args.no_review:
+            return
+
         sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
         rev_range = [get_feature_ancestor(full_name),
                      repo.commit(full_name).hexsha]
+        review = BranchReview.from_identifier('feature', name, rev_range)
+        review.post()
+        print 'OK'
 
-        if not args.no_review:
-            BranchReview.from_identifier('feature', name, rev_range).post()
+        sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
+        comment = 'New patch was uploaded into Review Board: ' + review.get_url()
+        story.add_comment(comment)
         print 'OK'
 
     #- checkout

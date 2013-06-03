@@ -45,10 +45,10 @@ def _check_version_format(version):
     if not re.match('[0-9]+([.][0-9]+){2}$', version):
         raise IllegalVersionFormat(version)
 
-
 def list_projects():
     projects = _get_client().projects.all()['projects']
     return [(p['id'], p['name']) for p in projects]
+
 
 class Story(object):
     def __init__(self, story_id, _skip_story_download=False):
@@ -89,6 +89,10 @@ class Story(object):
 
     def is_labeled(self, label):
         return label in self.get_labels()
+
+    def add_comment(self, comment):
+        self._client.stories.add_comment(
+            project_id=self._project_id, story_id=self.get_id(), text=comment)
 
     def start(self):
         self.set_state('started')

@@ -21,6 +21,9 @@ def _get_repo_id():
 def _get_server():
     return _gitflow.get('reviewboard.server')
 
+def _get_url():
+    return _gitflow.get('reviewboard.url')
+
 def _get_client():
     return rb_ext.make_rbclient(_get_server(), '', '')
 
@@ -56,6 +59,14 @@ class BranchReview(object):
     def get_id(self):
         return self._rid
 
+    def get_url(self):
+        if self._url:
+            return self._url
+        elif self.get_id():
+            return '{0}r/{1}/'.format(_get_url(), self.get_id())
+        else:
+            raise AttributeError('Neither review id nor review url is defined.')
+
     def post(self):
         assert self._rev_range
         cmd = ['rbt', 'post',
@@ -68,12 +79,16 @@ class BranchReview(object):
             cmd.append(str(self._rid))
         else:
             sys.stdout.write('new review ... ')
+        output = sub.check_output(cmd)
         print
         print
         print '>>> rbt output'
-        sub.check_call(cmd)
+        print output
         print '<<< rbt output'
-        print
+
+        # Use list comprehension to get rid of emply trailing strings.
+        self._url = [line for line in output.split('\n') if line != ''][-1]
+        self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
     def submit(self):
         assert self._rid
