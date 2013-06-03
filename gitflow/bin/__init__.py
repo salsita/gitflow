@@ -234,6 +234,7 @@ class FeatureCommand(GitFlowCommand):
     def run_finish(args):
         gitflow = GitFlow()
         repo = gitflow.repo
+        git = repo.git
 
         f_prefix = gitflow.get_prefix('feature')
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
@@ -269,23 +270,31 @@ class FeatureCommand(GitFlowCommand):
         gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
-                       tagging_info=None, push=(not args.no_push))
+                       tagging_info=None, push=False)
         print 'OK'
 
         #+++ Review Request
-        if args.no_review:
-            return
+        if not args.no_review:
+            sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
+            rev_range = [get_feature_ancestor(full_name),
+                         repo.commit(full_name).hexsha]
+            review = BranchReview.from_identifier('feature', name, rev_range)
+            review.post()
+            print 'OK'
 
-        sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
-        rev_range = [get_feature_ancestor(full_name),
-                     repo.commit(full_name).hexsha]
-        review = BranchReview.from_identifier('feature', name, rev_range)
-        review.post()
-        print 'OK'
+            sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
+            comment = 'New patch was uploaded into Review Board: ' + review.get_url()
+            story.add_comment(comment)
+            print 'OK'
 
-        sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
-        comment = 'New patch was uploaded into Review Board: ' + review.get_url()
-        story.add_comment(comment)
+        #+++ Git modify merge message
+        sys.stdout.write('Amending merge commit message to include links ... ')
+        msg  = 'Finished {0} {1}\n\n'.format(f_prefix, name)
+        msg += 'PT-Story-URL: {0}\n'.format(story.get_url())
+        msg += 'RB-Review-Request-URL: {0}\n'.format(review.get_url())
+        git.commit('--amend', '-m', msg)
+        if not args.no_push:
+            git.push(gitflow.origin_name(), upstream)
         print 'OK'
 
     #- checkout
