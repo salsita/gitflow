@@ -34,11 +34,11 @@ Installing salsita-gitflow
 
 You can install ``salsita gitflow``, using::
 
-    easy_install salsita-gitflow
-
-Or, if you'd like to use ``pip`` instead (recommended!)::
-
     pip install salsita-gitflow
+
+Or, if you'd like to use ``easy_install`` instead::
+
+    easy_install salsita-gitflow
 
 ``salsita-gitflow`` requires Python 2.7.
 
@@ -46,7 +46,7 @@ Setting it up
 -------------
 Global (same for all projects)::
 
-* git config --global reviewboard.url https://example.com/rb/ (the trailing slash MUST be there)
+* git config --global reviewboard.url https://example.com/rb/ (the trailing slash is REQUIRED)
 * git config --global reviewboard.server https://example.com/rb/
 * git config --global workflow.token <your PT token>
 
@@ -65,7 +65,7 @@ on the
 project by `bobthecow <http://github.com/bobthecow>`_. It offers
 tab-completion for all git-flow subcommands and branch names.
 
-Please note that some subcommands have changed in this fork, so it is
+Please note that some subcommands have changed in this gitflow fork, so it is
 questionable if the completions still make sense.
 
 Please help out
@@ -73,16 +73,16 @@ Please help out
 
 This project is still under development. Feedback and suggestions are
 very welcome and I encourage you to use the `Issues list
-<http://github.com/htgoebel/gitflow/issues>`_ on Github to provide that
+<http://github.com/salsita/gitflow/issues>`_ on Github to provide that
 feedback.
 
 Feel free to fork this repo and to commit your additions. For a list
 of all contributors, please see the :file:`AUTHORS.txt`.
 
-Salsita itself is using `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
+Salsita is using `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
 for code review.
 
-You will need :module:`unittest2` to run the tests.
+You will need :module:`unittest2` to run the tests (which are completely broken as of now, so nevermind).
 
 On the cutting edge
 ===================
@@ -113,10 +113,12 @@ course.
 
 
 git flow usage
-==================
+==============
 
 Initialization
----------------------
+--------------
+
+**Before you start, make sure that you are using SSH for communication with origin.**
 
 To initialize a new repo with the basic branch structure, use::
   
@@ -132,6 +134,8 @@ The ``-d`` flag will accept all defaults.
 
 Note: Please use the ``-d`` flag it will make your life much easier.
 
+init will also check your git config to see if the required records for
+Review Board and Pivotal Tracker are in place, failing if that is not the case.
 
 Creating feature/release/hotfix/support branches
 ----------------------------------------------------
@@ -139,13 +143,11 @@ Creating feature/release/hotfix/support branches
 * To list/start/finish feature branches, use::
   
       git flow feature
-      git flow feature start <name> [<base>]
-      git flow feature finish <name>
+      git flow feature start
+      git flow feature finish [<name>]
   
-  For feature branches, the ``<base>`` arg must be a commit on ``develop``.
-
   ``feature start`` will list unstarted & started stories from
-  current & backlog iterations in Pivotal Tracker. Select one and it's state
+  current & backlog iterations in Pivotal Tracker. Select one and its state
   will change to `started`. This command creates a feature branch as well, so
   switch between stories using ``git checkout``, not ``git flow feature start``.
 
@@ -164,26 +166,44 @@ Creating feature/release/hotfix/support branches
 * To list/start/finish release branches, use::
   
       git flow release
-      git flow release start <release> [<base>]
-      git flow release finish <release>
+      git flow release start <major.minor.release> [<base>]
+      git flow release finish [<major.minor.release>]
   
-  For release branches, the ``<base>`` arg must be a commit on ``develop``.
-  
-* To list/start/finish hotfix branches, use::
+* To list/start/finish hotfix branches (not supported by Salsita), use::
   
       git flow hotfix
       git flow hotfix start <release> [<base>]
       git flow hotfix finish <release>
-  
-  For hotfix branches, the ``<base>`` arg must be a commit on ``master``.
 
-* To list/start support branches, use::
+* To list/start support branches (not supported by Salsita), use::
   
       git flow support
       git flow support start <release> <base>
   
   For support branches, the ``<base>`` arg must be a commit on ``master``.
 
+Demo
+----
+
+A small demo how a complete feature implementation could look like::
+
+    $ git config --global reviewboard.server https://example.com/rb/
+    $ git config --global reviewboard.url https://example.com/rb/
+    $ git config --global workflow.token 0123456789
+    $ mkdir project
+    $ cd project
+    $ git remote add origin git@github.com:salsita/project.git
+    $ git pull
+    $ git flow init -d # Pick the project from PT and the repo from RB.
+    $ git checkout develop
+    $ git flow feature start # Pick the story from PT.
+    # Code code code
+    $ git add *
+    $ git commit -s
+    # Enter a beautiful and descriptive commit message.
+    $ git flow feature finish
+    # Go to the Review Board to submit the generated review request.
+    # PROFIT!
 
 History of the Project
 =========================
@@ -196,13 +216,13 @@ Vincent closed the pull-request and deleted his ``python-rewrite``
 branch. So Hartmut decided to release the Python rewrite on his own.
 
 
-Showing your appreciation
-==============================
+Showing your appreciation to the original authors
+=================================================
 
 Of course, the best way to show your appreciation for the git-flow
 tool itself remains contributing to the community. If you'd like to
 show your appreciation in another way, however, consider donating
-through PayPal: |Donate|_
+to the original authors through PayPal: |Donate|_
 
 
 .. |Donate| image:: https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif
