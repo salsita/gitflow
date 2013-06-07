@@ -22,6 +22,7 @@ git-flow
 
 import sys
 import argparse
+import subprocess as sub
 
 from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
@@ -278,8 +279,23 @@ class FeatureCommand(GitFlowCommand):
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
             rev_range = [get_feature_ancestor(full_name),
                          repo.commit(full_name).hexsha]
+            desc_cmd = ['git', 'log',
+                        "--pretty="
+                            "--------------------%n"
+                            "Author:   %an <%ae>%n"
+                            "Comitter: %cn <%ce>%n"
+                            "%n"
+                            "%s%n%n"
+                            "%b",
+                        '{0[0]}...{0[1]}'.format(rev_range)]
+            desc = '> Story being reviewed: {0}\n'.format(story.get_url()) + \
+                   '\n' \
+                   'COMMIT LOG\n' \
+                    + sub.check_output(desc_cmd)
+            # 7 is the magical offset to get the first commit subject
+            summary = desc.split('\n')[7]
             review = BranchReview.from_identifier('feature', name, rev_range)
-            review.post()
+            review.post(summary, desc)
             print 'OK'
 
             sys.stdout.write('Posting code review url into Pivotal Tracker ... ')

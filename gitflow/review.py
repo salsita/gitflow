@@ -67,12 +67,17 @@ class BranchReview(object):
         else:
             raise AttributeError('Neither review id nor review url is defined.')
 
-    def post(self):
+    def post(self, summary=None, desc=None):
         assert self._rev_range
         cmd = ['rbt', 'post',
                '--branch', self._branch,
-               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range),
-               '--guess-fields']
+               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
+        if summary is None or desc is None:
+            cmd.append('--guess-fields')
+        else:
+            cmd.append('--summary=' + str(summary))
+            cmd.append('--description=' + str(desc))
+
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
             cmd.append('--review-request-id')
