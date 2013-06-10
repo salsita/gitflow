@@ -245,9 +245,9 @@ class Release(object):
 
     def iter_candidates(self):
         for story in self._current_stories:
-            if story.is_feature() and \
-                    story.is_finished() and \
-                    story.get_release() is None:
+            if (story.is_feature() or story.is_bug()) \
+                    and story.is_finished() \
+                    and story.get_release() is None:
                 yield story
 
     def dump_stories(self):
@@ -260,7 +260,7 @@ class Release(object):
     def dump_all_releases(cls):
         stories = dict()
         for story in _iter_current_stories():
-            if story.is_feature():
+            if story.is_feature() or story.is_bug():
                 release = story.get_release()
                 if release:
                     if release in stories:
