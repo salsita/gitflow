@@ -585,8 +585,7 @@ class ReleaseCommand(GitFlowCommand):
         try:
             release.try_deliver()
         except GitflowError:
-            print 'FAIL'
-            raise
+            raise SystemExit('FAIL')
         print 'OK'
 
         #+++ Close (submit) all relevant reviews in Review Board
@@ -604,8 +603,8 @@ class ReleaseCommand(GitFlowCommand):
             r.submit()
             print '    ' + str(r.get_id())
         if not args.ignore_missing_reviews and err is not None:
-            raise err
-        print '    OK'
+            raise SystemExit('FAIL')
+        print 'OK'
 
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)
