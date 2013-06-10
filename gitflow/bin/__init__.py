@@ -592,17 +592,19 @@ class ReleaseCommand(GitFlowCommand):
         #+++ Close (submit) all relevant reviews in Review Board
         print 'Submitting all relevant review requests ... '
         feature_prefix = gitflow.get_prefix('feature')
+        err = None
         for story in release.iter_stories():
             prefix = feature_prefix + str(story.get_id())
             try:
                 r = BranchReview.from_prefix(prefix)
             except NoSuchBranchError, e:
-                if not args.ignore_missing_reviews:
-                    raise
+                err = e
                 print '    ' + str(e)
                 continue
             r.submit()
             print '    ' + str(r.get_id())
+        if not args.ignore_missing_reviews and err is not None:
+            raise err
         print '    OK'
 
         #+++ Merge release branch into develop and master
