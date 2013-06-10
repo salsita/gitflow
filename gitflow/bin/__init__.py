@@ -591,6 +591,7 @@ class ReleaseCommand(GitFlowCommand):
 
         #+++ Close (submit) all relevant reviews in Review Board
         print 'Submitting all relevant review requests ... '
+        feature_prefix = gitflow.get_prefix('feature')
         for story in release.iter_stories():
             prefix = feature_prefix + str(story.get_id())
             try:
