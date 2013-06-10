@@ -44,7 +44,7 @@ def list_repos():
 class BranchReview(object):
     def __init__(self, branch, rev_range=None):
         assert branch in _gitflow.repo.refs
-        assert len(rev_range) == 2
+        assert rev_range is None or len(rev_range) == 2
         self._branch = branch
         self._client = _get_client()
         if rev_range:
