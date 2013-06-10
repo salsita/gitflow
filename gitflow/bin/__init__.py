@@ -247,22 +247,22 @@ class FeatureCommand(GitFlowCommand):
         story = pivotal.Story(story_id)
         release = story.get_release()
 
-        # Get the state of the feature.
-        if story.is_finished():
-            sys.stdout.write('story already finished ... ')
-            if release:
-                # Merge into the release branch.
-                r_prefix = gitflow.get_prefix('release')
-                short_name = gitflow.nameprefix_or_current('release', release)
-                upstream = r_prefix + short_name
-            else:
-                # Merge into the develop branch and finish the story.
-                upstream = gitflow.develop_name()
+        # Decide on the upstream branch.
+        if release:
+            # Merge into the release branch.
+            r_prefix = gitflow.get_prefix('release')
+            short_name = gitflow.nameprefix_or_current('release', release)
+            upstream = r_prefix + short_name
         else:
             # Merge into the develop branch.
-            story.finish()
-            sys.stdout.write('finishing %s ... ' % story.get_id())
             upstream = gitflow.develop_name()
+
+        # Get and set the state of the feature.
+        if story.is_finished():
+            sys.stdout.write('story already finished ... ')
+        else:
+            sys.stdout.write('finishing %s ... ' % story.get_id())
+            story.finish()
         print 'OK'
 
         #+++ Git manipulation
