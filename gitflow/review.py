@@ -122,19 +122,24 @@ class BranchReview(object):
     @classmethod
     def from_prefix(cls, prefix):
         client = _get_client()
-        options = dict(repository=_get_repo_id())
-        reviews = client.get_review_requests(options=options)
-        for review in reviews:
-            if review['branch'].startswith(prefix):
-                t = type('BranchReview', (cls,), dict(_rid=review['id']))
-                return t(review['branch'])
-        raise NoSuchBranchError('no review for branch prefixed with ' + prefix)
+        options = dict(repository=_get_repo_id(), status='all')
+        reviews = [r for r in client.get_review_requests(options=options)
+                     if r['branch'].startswith(prefix)]
+        if len(reviews) == 0:
+            raise NoSuchBranchError(
+                    'No review request found for branch prefixed with ' + prefix)
+        elif len(reviews) == 1:
+            r = reviews[0]
+            t = type('BranchReview', (cls,), dict(_rid=r['id']))
+            return t(r['branch'])
+        else:
+            raise MultipleReviewRequestsForBranch(r['branch'])
 
     @classmethod
-    def from_identifier(cls, identifier, name, upstream=None):
+    def from_identifier(cls, identifier, name, rev_range=None):
         prefix = _gitflow.get_prefix(identifier)
         name = _gitflow.nameprefix_or_current(identifier, name)
-        return cls(prefix + name, upstream)
+        return cls(prefix + name, rev_range)
 
 
 def post_review(self, identifier, name, post_new):

@@ -26,7 +26,9 @@ class AlreadyInitialized(StatusError):
         return ("Already initialized for gitflow.\n"
                 "To force reinitialization use: git flow init -f")
 class ReleaseAlreadyAssigned(StatusError): pass
-class MultipleReviewRequestsForBranch(StatusError): pass
+class MultipleReviewRequestsForBranch(StatusError):
+    def __str__(self):
+        return 'Multiple review requests for {0} were found'.format(self.args[0])
 class IllegalCommunicationProtocol(StatusError): pass
 class RemoteNotFound(StatusError): pass
 
