@@ -242,10 +242,11 @@ class FeatureCommand(GitFlowCommand):
         full_name = f_prefix + name
 
         #+++ PT story stuff
-        sys.stdout.write('Connecting to Pivotal Tracker ... ')
+        sys.stdout.write('Getting data from Pivotal Tracker ... ')
         story_id = pivotal.get_story_id_from_branch_name(name)
         story = pivotal.Story(story_id)
         release = story.get_release()
+        print 'OK'
 
         # Decide on the upstream branch.
         if release:
@@ -257,14 +258,6 @@ class FeatureCommand(GitFlowCommand):
             # Merge into the develop branch.
             upstream = gitflow.develop_name()
 
-        # Get and set the state of the feature.
-        if story.is_finished():
-            sys.stdout.write('story already finished ... ')
-        else:
-            sys.stdout.write('finishing %s ... ' % story.get_id())
-            story.finish()
-        print 'OK'
-
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
                          % upstream)
@@ -272,6 +265,15 @@ class FeatureCommand(GitFlowCommand):
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
                        tagging_info=None, push=False)
+        print 'OK'
+
+        # Get and set the state of the feature.
+        sys.stdout.write('Updating Pivotal Tracker ... ')
+        if story.is_finished():
+            sys.stdout.write('story already finished, skipping ... ')
+        else:
+            sys.stdout.write('finishing %s ... ' % story.get_id())
+            story.finish()
         print 'OK'
 
         #+++ Review Request
