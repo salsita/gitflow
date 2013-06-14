@@ -514,9 +514,7 @@ class ReleaseCommand(GitFlowCommand):
         if not any_assigned and not any_candidate:
             raise SystemExit('No stories to be released, aborting...')
 
-        if release.prompt_for_confirmation():
-            release.start()
-        else:
+        if not release.prompt_for_confirmation():
             raise SystemExit('Aborting...')
 
         #+ Git modifications.
@@ -532,6 +530,9 @@ class ReleaseCommand(GitFlowCommand):
         except Exception, e:
             die("Could not create release branch %r" % args.version, e)
         print 'OK'
+
+        release.start()
+
         print
         print "Follow-up actions:"
         print "- Bump the version number now!"
