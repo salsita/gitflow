@@ -15,11 +15,19 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 _gitflow = GitFlow()
 
 def _get_client():
-    token = _gitflow.get('workflow.token')
+    try:
+        token = _gitflow.get('workflow.token')
+    except Exception:
+        raise NotInitialized(
+                'This repo has not yet been initialized for git-flow.')
     return pt.PivotalClient(token=token)
 
 def _get_project_id():
-    return _gitflow.get('workflow.projectid')
+    try:
+        return _gitflow.get('workflow.projectid')
+    except Exception:
+        raise NotInitialized(
+                'This repo has not yet been initialized for git-flow.')
 
 def _iter_current_stories():
     client = _get_client()

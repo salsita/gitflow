@@ -43,10 +43,18 @@ def requires_repo(f):
 def requires_initialized(f):
     @wraps(f)
     def _inner(self, *args, **kwargs):
+        msg = 'This repo has not yet been initialized for git-flow.'
         if (not self.is_initialized() or
             not self.master_name() in self.repo.branches or
             not self.develop_name() in self.repo.branches):
-            msg = 'This repo has not yet been initialized for git-flow.'
+            raise NotInitialized(msg)
+        try:
+            self.get('reviewboard.url')
+            self.get('reviewboard.server')
+            self.get('reviewboard.repoid')
+            self.get('workflow.token')
+            self.get('workflow.projectid')
+        except Exception:
             raise NotInitialized(msg)
         return f(self, *args, **kwargs)
     return _inner
@@ -256,7 +264,7 @@ class GitFlow(object):
         try:
             return self.repo.remotes[name]
         except IndexError:
-            raise NoSuchRemoteError(name)
+            raise NoSuchRemoteError("Remote '{0}' was not found.".format(name))
 
     def origin(self):
         return self.require_remote(self.origin_name())
