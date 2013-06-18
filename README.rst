@@ -143,13 +143,16 @@ Creating feature/release/hotfix/support branches
 * To list/start/finish feature branches, use::
   
       git flow feature
-      git flow feature start
+      git flow feature start [--for-release RELEASE]
       git flow feature finish [<name>]
   
   ``feature start`` will list unstarted & started stories from
   current & backlog iterations in Pivotal Tracker. Select one and its state
   will change to `started`. This command creates a feature branch as well, so
   switch between stories using ``git checkout``, not ``git flow feature start``.
+  If you wish to base your story on a release branch,
+  use ``--for-release RELEASE``. This will also assign the story in Pivotal
+  Tracker as a part of starting it.
 
   ``feature finish`` will finish the currently active story (merge it into
   `develop`, push develop, change the story state in PT to `finished` and

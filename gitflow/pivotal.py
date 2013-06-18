@@ -6,6 +6,7 @@ from colorama import init
 init()
 import sys
 import re
+import itertools
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
                                 ReleaseAlreadyAssigned, IllegalVersionFormat,
@@ -15,19 +16,13 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 _gitflow = GitFlow()
 
 def _get_client():
-    try:
-        token = _gitflow.get('workflow.token')
-    except Exception:
-        raise NotInitialized(
-                'This repo has not yet been initialized for git-flow.')
-    return pt.PivotalClient(token=token)
+    return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))
 
 def _get_project_id():
-    try:
-        return _gitflow.get('workflow.projectid')
-    except Exception:
-        raise NotInitialized(
-                'This repo has not yet been initialized for git-flow.')
+    return _gitflow._safe_get('gitflow.pt.projectid')
+
+def _get_version_matcher():
+    return _gitflow._safe_get('gitflow.release.versionmatcher')
 
 def _iter_current_stories():
     client = _get_client()
@@ -49,9 +44,13 @@ def _iter_backlog_stories():
         for story in iteration['stories']:
             yield Story.from_dict(story)
 
+def _iter_stories():
+    return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
+
 def _check_version_format(version):
-    if not re.match('[0-9]+([.][0-9]+){2}$', version):
-        raise IllegalVersionFormat(version)
+    matcher = _get_version_matcher()
+    if not re.match(matcher + '$', version):
+        raise IllegalVersionFormat(matcher)
 
 def list_projects():
     projects = _get_client().projects.all()['projects']
@@ -139,7 +138,7 @@ class Story(object):
     def get_release(self):
         assert self.is_feature() or self.is_bug()
         for label in self.get_labels():
-            m = re.match('release-([0-9]+([.][0-9]+){2})$', label)
+            m = re.match('release-' + _get_version_matcher() + '$', label)
             if m:
                 return m.groups()[0]
 
@@ -149,8 +148,20 @@ class Story(object):
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
         self.add_label('release-' + release)
-    #--- Bug- & Feature-specific stuff
 
+    def get_branch(self):
+        assert self.is_feature() or self.is_bug()
+        mgr = _gitflow.managers['feature']
+        try:
+            return mgr.by_name_prefix(str(self.get_id()))
+        except NoSuchBranchError:
+            pass
+        try:
+            return mgr.by_name_prefix(str(self.get_id()), remote=True)
+        except NoSuchBranchError:
+            pass
+        return None
+    #--- Bug- & Feature-specific stuff
 
     #+++ Feature-specific stuff
     def is_feature(self):
@@ -218,6 +229,10 @@ class Release(object):
         if _skip_story_download:
             return
         self._current_stories = list(_iter_current_stories())
+
+    def get_version(self):
+        assert self._version
+        return self._version
 
     def start(self):
         for story in self.iter_candidates():
@@ -310,37 +325,32 @@ def filter_stories(stories, states, types=None):
 def prompt_user_to_select_story():
     i = 1
     stories = list()
-    any_available = False
-    print Style.DIM + "--------- current -----------" + Style.RESET_ALL
-    for story in _iter_current_stories():
-        if (story.is_feature() or story.is_bug()) \
-                and (story.is_started()
-                        or story.is_unstarted()
-                        or story.is_rejected()):
-            stories.append(story)
-            print_story(story.to_dict(), i)
-            any_available = True
-            i += 1
-    if not any_available:
-        print 'No story available'
-    any_available = False
-    print Style.DIM + "--------- backlog -----------" + Style.RESET_ALL
-    for story in _iter_backlog_stories():
+    print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
+    for story in _iter_stories():
         if story.is_chore():
             continue
         if story.is_feature() and not story.is_estimated():
             continue
-        stories.append(story)
-        print_story(story.to_dict(), i)
-        any_available = True
-        i += 1
-    if not any_available:
-        print 'No story available'
+        # You do not start a story if its branch is present or it is
+        # assigned to a release, unless it is rejected.
+        # If it is not rejected, use checkout instead.
+        if (story.get_release() is not None \
+                or story.get_branch() is not None) \
+                and not story.is_rejected():
+            continue
+        if story.is_started() \
+                or story.is_unstarted() \
+                or story.is_rejected():
+            stories.append(story)
+            print_story(story.to_dict(), i)
+            i += 1
     print Style.DIM + "-----------------------------" + Style.RESET_ALL
     print
 
     if len(stories) == 0:
-        raise SystemExit('No story available, aborting!')
+        raise SystemExit('No story available, aborting!\n\n' \
+                'Try "git flow feature list" to find another story' \
+                ' to work on.')
 
     # Prompt user to choose story index.
     print "Select story (or 'q' to quit): "
@@ -360,21 +370,6 @@ def prompt_user_to_select_story():
     # We're expecting input to start from 1, so we have to
     # subtract one here to get the list index.
     story = stories[index - 1]
-
-    try:
-        name = _gitflow.nameprefix_or_current('feature', str(story.get_id()))
-        full_name = _gitflow.get_prefix('feature') + name
-        print 'A branch associated with this story already exists.'
-        d = raw_input('Do you wish to checkout %s? [y/N]: ' % full_name)
-        if d.lower() == 'y':
-            _gitflow.git.checkout(full_name)
-            story.start()
-            raise SystemExit('So be it.')
-        else:
-            raise SystemExit('Operation canceled.')
-    except NoSuchBranchError:
-        pass
-
     slug = prompt_user_to_select_slug(story)
 
     return [story.get_id(), str(story.get_id()) + '/' + slug]
@@ -426,8 +421,8 @@ def slugify(story_name, max_length=25):
 
 
 def get_iterations():
-    token = _gitflow.get('workflow.token')
-    project_id = _gitflow.get('workflow.projectid')
+    token = _gitflow.get('gitflow.pt.token')
+    project_id = _gitflow.get('gitflow.pt.projectid')
     client = pt.PivotalClient(token=token)
     current = client.iterations.current(project_id)
     backlog = client.iterations.backlog(project_id)
@@ -435,8 +430,8 @@ def get_iterations():
 
 
 def update_story(story_id, **kwargs):
-    token = _gitflow.get('workflow.token')
-    project_id = _gitflow.get('workflow.projectid')
+    token = _gitflow.get('gitflow.pt.token')
+    project_id = _gitflow.get('gitflow.pt.projectid')
     client = pt.PivotalClient(token=token)
     try:
         client.stories.update(
@@ -448,16 +443,16 @@ def update_story(story_id, **kwargs):
 
 
 def add_comment_to_story(story_id, msg):
-    token = _gitflow.get('workflow.token')
-    project_id = _gitflow.get('workflow.projectid')
+    token = _gitflow.get('gitflow.pt.token')
+    project_id = _gitflow.get('gitflow.pt.projectid')
     client = pt.PivotalClient(token=token)
     client.stories.add_comment(
         project_id=project_id, story_id=story_id, text =msg)
 
 
 def get_story(story_id):
-    token = _gitflow.get('workflow.token')
-    project_id = _gitflow.get('workflow.projectid')
+    token = _gitflow.get('gitflow.pt.token')
+    project_id = _gitflow.get('gitflow.pt.projectid')
     client = pt.PivotalClient(token=token)
     return client.stories.get(project_id=project_id, story_id=story_id)
 

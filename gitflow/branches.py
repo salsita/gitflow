@@ -14,7 +14,7 @@ from git import GitCommandError, Reference
 from gitflow.exceptions import (NoSuchBranchError, BranchExistsError,
                                 PrefixNotUniqueError, BaseNotOnBranch,
                                 WorkdirIsDirtyError, BranchTypeExistsError,
-                                TagExistsError, MergeError)
+                                TagExistsError, MergeError, BaseNotFound)
 
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
@@ -86,7 +86,7 @@ class BranchManager(object):
         else:
             return full_name
 
-    def by_name_prefix(self, nameprefix):
+    def by_name_prefix(self, nameprefix, remote=False):
         """
         If exactly one branch of the type that this manager manages starts with
         the given name prefix, returns that branch.  Raises
@@ -101,9 +101,12 @@ class BranchManager(object):
             The :class:`git.refs.Head` instance of the branch that can be
             uniquely identified by the given name prefix.
         """
-        nameprefix = self.full_name(nameprefix)
+        if remote:
+            nameprefix = self.gitflow.origin_name(self.full_name(nameprefix))
+        else:
+            nameprefix = self.full_name(nameprefix)
         matches = [b
-                   for b in self.iter()
+                   for b in self.iter(remote)
                    if b.name.startswith(nameprefix)]
         num_matches = len(matches)
         if num_matches == 1:
@@ -116,23 +119,30 @@ class BranchManager(object):
                     'matching the prefix "%s": %s' % (self.identifier,
                         nameprefix, matches))
 
-    def iter(self):
+    def iter(self, remote=False):
         """
         :returns:
             An iterator, iterating over all branches of the type that this
             manager manages.
         """
-        for branch in self.gitflow.repo.branches:
-            if branch.name.startswith(self.prefix):
-                yield branch
+        if remote:
+            refs = self.gitflow.repo.refs
+            prefix = self.gitflow.origin_name(self.prefix)
+        else:
+            refs = self.gitflow.repo.branches
+            prefix = self.prefix
 
-    def list(self):
+        for r in refs:
+            if r.name.startswith(prefix):
+                yield r
+
+    def list(self, remote=False):
         """
         :returns:
             A list of all branches of the type that this manager manages.  See
             also :meth:`iter`.
         """
-        return list(self.iter())
+        return list(self.iter(remote))
 
     def create(self, name, base=None, fetch=False,
                must_be_on_default_base=False):
@@ -162,55 +172,41 @@ class BranchManager(object):
         gitflow = self.gitflow
         repo = gitflow.repo
 
-        full_name = self.prefix + name
-        if full_name in repo.branches:
-            raise BranchExistsError(full_name)
-
-        gitflow.require_no_merge_conflict()
-        if gitflow.has_staged_commits():
-            raise WorkdirIsDirtyError('Contains local changes checked into '
-                                      'the index but not committed.')
-
-        # update the local repo with remote changes, if asked
         if fetch:
-            # :fixme: Should this be really `fetch`, not `update`?
-            # :fixme:  `fetch` does not change any refs, so it is quite
-            # :fixme:  useless. But `update` would advance `develop` and
-            # :fixme:  moan about required merges.
-            # :fixme:  OTOH, `update` would also give new remote refs,
-            # :fixme:  e.g. a remote branch with the same name.
-            gitflow.origin().fetch(self.default_base())
+            gitflow.origin().fetch()
 
-        # If the origin branch counterpart exists, assert that the
-        # local branch isn't behind it (to avoid unnecessary rebasing).
-        if gitflow.origin_name(self.default_base()) in repo.refs:
-            # :todo: rethink: check this only if base == default_base()?
-            gitflow.require_branches_equal(
-                gitflow.origin_name(self.default_base()),
-                self.default_base())
+        # Make sure the branch exists neither locally nor remotely.
+        full_name = self.full_name(name)
+        origin_name = gitflow.origin_name(full_name)
+        for r in repo.refs:
+            if r.name in (full_name, origin_name):
+                raise BranchExistsError(full_name)
 
+        # Make sure the base exists and is in sync.
         if base is None:
             base = self.default_base()
         elif must_be_on_default_base:
             if not gitflow.is_merged_into(base, self.default_base()):
                 raise BaseNotOnBranch(base, self.default_base())
 
-        # If there is a remote branch with the same name, use it
-        remote_branch = None
-        if gitflow.origin_name(full_name) in repo.refs:
-            remote_branch = repo.refs[gitflow.origin_name(full_name)]
-            if fetch:
-                gitflow.origin().fetch(remote_branch.remote_head)
-            # Base must be on the remote branch, too, to avoid conflicts
-            if not gitflow.is_merged_into(base, remote_branch):
-                raise BaseNotOnBranch(base, remote_branch)
-            # base the new local branch on the remote on
-            base = remote_branch
+        origin_base = gitflow.origin_name(base)
+        if base in repo.refs:
+            if origin_base in repo.refs:
+                gitflow.require_branches_equal(origin_base, base)
+        elif origin_base in repo.refs:
+            base = origin_base
+        else:
+            raise BaseNotFound('Base branch {0} not found.'.format(base))
 
+        # Make sure there are no merge conflicts.
+        gitflow.require_no_merge_conflict()
+        if gitflow.has_staged_commits():
+            raise WorkdirIsDirtyError('Contains local changes checked into '
+                                      'the index but not committed.')
+
+        # Finally, create and checkout.
         branch = repo.create_head(full_name, base)
         branch.checkout()
-        if remote_branch:
-            branch.set_tracking_branch(remote_branch)
         return branch
 
     def _is_single_commit_branch(self, from_, to):
@@ -385,16 +381,6 @@ class ReleaseBranchManager(BranchManager):
         """
         gitflow = self.gitflow
         git = gitflow.git
-
-        # if the branch exists, we are done
-        try:
-            branch = self.by_name_prefix(version)
-            if branch in gitflow.repo.branches:
-                git.checkout(branch)
-                raise SystemExit("\nBranch already exists, " \
-                                 "checking it out and aborting!")
-        except NoSuchBranchError:
-            pass
 
         # there must be no active `release` branch
         if len(self.list()) > 0:

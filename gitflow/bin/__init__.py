@@ -20,6 +20,7 @@ git-flow
 # Distributed under a BSD-like license. For full terms see the file LICENSE.txt
 #
 
+import re
 import sys
 import argparse
 import subprocess as sub
@@ -28,7 +29,9 @@ from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
 from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
-                                BaseNotOnBranch, NoSuchBranchError)
+                                BaseNotOnBranch, NoSuchBranchError,
+                                BaseNotAllowed, BranchExistsError,
+                                IllegalVersionFormat)
 import gitflow.pivotal as pivotal
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
@@ -106,32 +109,6 @@ class InitCommand(GitFlowCommand):
 
     @staticmethod
     def run(args):
-        gitflow = GitFlow()
-        err = False
-        for option in ('workflow.token',
-                       'reviewboard.url',
-                       'reviewboard.server'):
-            try:
-                value = gitflow.get(option)
-                if option == 'reviewboard.url' and not value.endswith('/'):
-                    err = True
-                    print """
-Git config key 'reviewboard.url' must contain a trailing slash.
-Update your configuration by executing
-
-    $ git config [--global] reviewboard.url %s
-""" % (value + '/')
-            except Exception:
-                err = True
-                print """
-Git config '%s' missing, please fill it in by executing
-
-    $ git config [--global] %s <value>
-""" % (option, option)
-
-        if err:
-            raise SystemExit('Operation canceled.')
-
         from . import _init
         _init.run_default(args)
 
@@ -157,8 +134,10 @@ class FeatureCommand(GitFlowCommand):
     def register_list(cls, parent):
         p = parent.add_parser('list',
                               help='List all existing feature branches '
-                              'in the local repository.')
+                              'in the local and optionally remote repository.')
         p.set_defaults(func=cls.run_list)
+        p.add_argument('-a', '--all', action='store_true',
+                help='List remote feature branches as well.')
         p.add_argument('-v', '--verbose', action='store_true',
                 help='Be verbose (more output).')
 
@@ -167,7 +146,7 @@ class FeatureCommand(GitFlowCommand):
         gitflow = GitFlow()
         gitflow.start_transaction()
         gitflow.list('feature', 'name', use_tagname=False,
-                     verbose=args.verbose)
+                     verbose=args.verbose, include_remote=args.all)
 
     #- select
     @classmethod
@@ -175,38 +154,57 @@ class FeatureCommand(GitFlowCommand):
         p = parent.add_parser('start', help='Select a story in PT and create'
             'a new feature branch.')
         p.set_defaults(func=cls.run_start)
-        p.add_argument('-F', '--fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
-        p.add_argument('base', nargs='?')
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-r', '--for-release',
+                help='Base the feature branch on a release branch.')
 
     @staticmethod
     def run_start(args):
-        try:
-            [story_id, args.name] = pivotal.prompt_user_to_select_story()
-        except NotInitialized:
-            raise
-        pivotal.update_story(story_id, current_state='started')
         gitflow = GitFlow()
+
+        if args.for_release is not None:
+            # Make sure --for-release matches the requirements.
+            prefix = gitflow.get_prefix('release')
+            matcher = gitflow._safe_get('gitflow.release.versionmatcher')
+            if not re.match(matcher + '$', args.for_release):
+                raise IlegalVersionFormatmat(matcher)
+            base = prefix + args.for_release
+        else:
+            base = gitflow.managers['feature'].default_base()
+
+        if not args.no_fetch:
+            sys.stderr.write('Fetching origin ... ')
+            gitflow.origin().fetch()
+            print 'OK'
+
+        [story_id, name] = pivotal.prompt_user_to_select_story()
+        story = pivotal.Story(story_id)
+
         # :fixme: Why does the sh-version not require a clean working dir?
-        # :fixme: get default value for `base`
         gitflow.start_transaction('start feature branch %s (from %s)' % \
-                (args.name, args.base))
+                (name, base))
         try:
-            branch = gitflow.create('feature', args.name, args.base,
-                                    fetch=args.fetch)
+            # fetch=False because we are already fetching at the beginning.
+            branch = gitflow.create('feature', name, base, fetch=False)
         except (NotInitialized, BaseNotOnBranch):
             # printed in main()
             raise
         except Exception, e:
-            die("Could not create feature branch %r" % args.name, e)
+            die("Could not create feature branch %r" % name, e)
+
+        if args.for_release is not None:
+            story.assign_to_release(args.for_release)
+        story.start()
+
         print
         print "Summary of actions:"
-        print "- A new branch", branch, "was created, based on", args.base
+        print "- A new branch", branch, "was created, based on", base
         print "- You are now on branch", branch
         print ""
         print "Now, start committing on your feature. When done, use:"
         print ""
-        print "     git flow feature finish", args.name
+        print "     git flow feature finish", name
         print
 
     #- finish
@@ -327,9 +325,8 @@ class FeatureCommand(GitFlowCommand):
     def run_checkout(args):
         gitflow = GitFlow()
         # NB: Does not default to the current branch as `nameprefix` is required
-        name = gitflow.nameprefix_or_current('feature', args.nameprefix)
-        gitflow.start_transaction('checking out feature branch %s' % name)
-        gitflow.checkout('feature', name)
+        branch = gitflow.checkout('feature', args.nameprefix)
+        print 'Checking out feature {0}.'.format(branch.name)
 
     #- diff
     @classmethod
@@ -525,15 +522,17 @@ class ReleaseCommand(GitFlowCommand):
         try:
             branch = gitflow.create('release', args.version, base,
                                     fetch=args.fetch)
+        except BranchExistsError:
+            sys.stdout.write('branch already exists ... ')
         except (NotInitialized, BranchTypeExistsError, BaseNotOnBranch):
-            print
             # printed in main()
             raise
         except Exception, e:
-            die("Could not create release branch %r" % args.version, e)
+            die("could not create release branch %r" % args.version, e)
         print 'OK'
 
         release.start()
+        gitflow.checkout('release', release.get_version())
 
         print
         print "Follow-up actions:"

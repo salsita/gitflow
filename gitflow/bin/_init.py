@@ -168,17 +168,18 @@ def _pick(title, source):
             return suggestions[answer-1]
 
 def _ask_pt_projid():
-    gitflow.set('workflow.projectid',
+    gitflow.set('gitflow.pt.projectid',
                 _pick('Pivotal Tracker projects', pt.list_projects)[0])
 
 def _ask_rb_repoid():
-    gitflow.set('reviewboard.repoid',
+    gitflow.set('gitflow.rb.repoid',
                 _pick('Review Board repositories', rb.list_repos)[0])
 
 def run_default(args):
     global gitflow
     gitflow = GitFlow()
     gitflow._enforce_git_repo()
+    gitflow._enforce_services()
 
     if gitflow.is_initialized():
         if not args.force:
@@ -223,6 +224,9 @@ def run_default(args):
     _ask_prefix(args, "hotfix", "Hotfix branches")
     _ask_prefix(args, "support", "Support branches")
     _ask_prefix(args, "versiontag", "Version tag prefix")
+
+    _ask_name(args, 'release.versionmatcher',
+            'Regular expression for matching release numbers')
 
     _ask_pt_projid()
     _ask_rb_repoid()

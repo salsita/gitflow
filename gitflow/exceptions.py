@@ -18,6 +18,7 @@ class OperationsError(GitflowError): pass
 class PrefixNotUniqueError(OperationsError): pass
 class MergeError(OperationsError): pass
 
+
 class StatusError(GitflowError): pass
 class WorkdirIsDirtyError(StatusError): pass
 class NotInitialized(StatusError): pass
@@ -52,6 +53,8 @@ class BaseNotOnBranch(ObjectError):
                 "but it is diverging from '%s'" \
                 % (self.args[1], self.args[0]))
 
+class BaseNotFound(ObjectError): pass
+class BaseNotAllowed(ObjectError): pass
 
 class BranchExistsError(ObjectError):pass
 class TagExistsError(ObjectError): pass
@@ -65,7 +68,8 @@ class NoSuchLocalBranchError(NoSuchBranchError):
     def __str__(self):
         return ("Local branch '%s' does not exist." % self.args[0])
 
+
 class IllegalVersionFormat(GitflowError):
     def __str__(self):
-        return "Version string is ill-formed, expected x.y.z, got " + \
+        return "Version string is ill-formed, it is not matching " + \
                 self.args[0]

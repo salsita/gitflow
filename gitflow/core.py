@@ -48,14 +48,7 @@ def requires_initialized(f):
             not self.master_name() in self.repo.branches or
             not self.develop_name() in self.repo.branches):
             raise NotInitialized(msg)
-        try:
-            self.get('reviewboard.url')
-            self.get('reviewboard.server')
-            self.get('reviewboard.repoid')
-            self.get('workflow.token')
-            self.get('workflow.projectid')
-        except Exception:
-            raise NotInitialized(msg)
+        self._enforce_services()
         return f(self, *args, **kwargs)
     return _inner
 
@@ -113,6 +106,7 @@ class GitFlow(object):
             'gitflow.branch.develop': 'develop',
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
+            'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
             }
         for identifier, manager in self.managers.items():
             self.defaults['gitflow.prefix.%s' % identifier] = manager.DEFAULT_PREFIX
@@ -188,6 +182,46 @@ class GitFlow(object):
             self.git.init(self.working_dir)
             self.repo = Repo(self.working_dir)
 
+
+    def _enforce_services(self):
+        err = False
+        for option in ('gitflow.pt.token',
+                       'gitflow.rb.repoid',
+                       'reviewboard.url',
+                       'reviewboard.server'):
+            try:
+                value = self.get(option)
+                if option == 'reviewboard.url' and not value.endswith('/'):
+                    err = True
+                    print """
+Git config key 'reviewboard.url' must contain a trailing slash.
+Update your configuration by executing
+
+    $ git config [--global] reviewboard.url %s
+""" % (value + '/')
+            except Exception:
+                try:
+                    if option == 'gitflow.pt.token':
+                        value = self.get('workflow.token')
+                        self.set('gitflow.pt.token', value)
+                        continue
+                    elif option == 'gitflow.rb.repoid':
+                        value = self.get('reviewboard.repoid')
+                        self.set('gitflow.rb.repoid', value)
+                        continue
+                except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+                    pass
+                err = True
+                print """
+Git config '%s' missing, please fill it in by executing
+
+    $ git config [--global] %s <value>
+""" % (option, option)
+
+        if err:
+            raise SystemExit('Operation canceled.')
+
+
     def init(self, master=None, develop=None, prefixes={}, names={},
              force_defaults=False):
         self._enforce_git_repo()
@@ -204,7 +238,8 @@ class GitFlow(object):
                 self.is_set('gitflow.prefix.release') and
                 self.is_set('gitflow.prefix.hotfix') and
                 self.is_set('gitflow.prefix.support') and
-                self.is_set('gitflow.prefix.versiontag'))
+                self.is_set('gitflow.prefix.versiontag') and
+                self.is_set('gitflow.release.versionmatcher'))
 
     def _parse_setting(self, setting):
         groups = setting.split('.', 2)
@@ -496,7 +531,8 @@ class GitFlow(object):
     #
 
     @requires_repo
-    def list(self, identifier, arg0_name, verbose, use_tagname):
+    def list(self, identifier, arg0_name, verbose, use_tagname,
+            include_remote=False):
         """
         List the all branches of the given type. If there are not
         branches of this type, raises :exc:`Usage` with an
@@ -523,6 +559,8 @@ class GitFlow(object):
         repo = self.repo
         manager = self.managers[identifier]
         branches = manager.list()
+        if include_remote:
+            branches += manager.list(remote=True)
         if not branches:
             raise Usage(
                 'No %s branches exist.' % identifier,
@@ -635,8 +673,15 @@ class GitFlow(object):
             The checked out :class:`git.refs.Head` branch.
         """
         mgr = self.managers[identifier]
-        branch = mgr.by_name_prefix(name)
-        return branch.checkout()
+        try:
+            branch = mgr.by_name_prefix(name)
+            return branch.checkout()
+        except NoSuchBranchError, ex:
+            pass
+
+        branch = mgr.by_name_prefix(name, remote=True)
+        self.git.checkout(branch.name[len(self.origin_name())+1:])
+        return branch
 
     @requires_initialized
     def diff(self, identifier, name):

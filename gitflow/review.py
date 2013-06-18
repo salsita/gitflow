@@ -16,13 +16,13 @@ class ReviewNotAcceptedYet(GitflowError): pass
 _gitflow = GitFlow()
 
 def _get_repo_id():
-    return _gitflow.get('reviewboard.repoid')
+    return _gitflow._safe_get('gitflow.rb.repoid')
 
 def _get_server():
-    return _gitflow.get('reviewboard.server')
+    return _gitflow._safe_get('reviewboard.server')
 
 def _get_url():
-    return _gitflow.get('reviewboard.url')
+    return _gitflow._safe_get('reviewboard.url')
 
 def _get_client():
     return rb_ext.make_rbclient(_get_server(), '', '')
@@ -43,7 +43,6 @@ def list_repos():
 
 class BranchReview(object):
     def __init__(self, branch, rev_range=None):
-        assert branch in _gitflow.repo.refs
         assert rev_range is None or len(rev_range) == 2
         self._branch = branch
         self._client = _get_client()
