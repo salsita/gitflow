@@ -513,11 +513,13 @@ class ReleaseCommand(GitFlowCommand):
             print '    None'
         print
 
-        if not any_assigned and not any_candidate:
-            raise SystemExit('No stories to be released, aborting...')
+        if not any_candidate:
+            raise SystemExit('No new stories to be added to the release,' \
+                    'aborting...')
 
         if not release.prompt_for_confirmation():
             raise SystemExit('Aborting...')
+
 
         #+ Git modifications.
         sys.stdout.write('Creating release branch (base being %s) ... ' \
