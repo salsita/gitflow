@@ -256,6 +256,11 @@ class FeatureCommand(GitFlowCommand):
             # Merge into the develop branch.
             upstream = gitflow.develop_name()
 
+        # Fail as soon as possible if something is not right so that we don't
+        # get Pivotal Tracker into an inconsistent state.
+        rev_range = [get_feature_ancestor(full_name),
+                         repo.commit(full_name).hexsha]
+
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
                          % upstream)
@@ -277,8 +282,6 @@ class FeatureCommand(GitFlowCommand):
         #+++ Review Request
         if not args.no_review:
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
-            rev_range = [get_feature_ancestor(full_name),
-                         repo.commit(full_name).hexsha]
             desc_cmd = ['git', 'log',
                         "--pretty="
                             "--------------------%n"

@@ -41,6 +41,8 @@ class MergeConflict(StatusError):
             "    git commit",
             ])
 
+class EmptyDiff(StatusError): pass
+
 
 class ObjectError(GitflowError): pass
 class BadObjectError(ObjectError): pass
@@ -55,6 +57,8 @@ class BaseNotOnBranch(ObjectError):
 
 class BaseNotFound(ObjectError): pass
 class BaseNotAllowed(ObjectError): pass
+
+class AncestorNotFound(ObjectError): pass
 
 class BranchExistsError(ObjectError):pass
 class TagExistsError(ObjectError): pass

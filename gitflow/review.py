@@ -8,7 +8,7 @@ import sys
 
 from gitflow.core import GitFlow
 from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
-                                NoSuchBranchError)
+                                NoSuchBranchError, AncestorNotFound, EmptyDiff)
 
 
 class ReviewNotAcceptedYet(GitflowError): pass
@@ -231,7 +231,16 @@ def find_last_patch_parent(develop_name, branch_name):
         return lines[1].split(' ')[0]
 
 def get_feature_ancestor(feature):
+    repo = _gitflow.repo
     develop = _gitflow.develop_name()
+
+    # Check if we are not looking for the ancestor of the same commit.
+    # If that is the case, the algorithm used further fails.
+    fc = repo.commit(feature)
+    dc = repo.commit(develop)
+    if fc == dc:
+        raise EmptyDiff('{0} and {1} are pointing to the same commit.' \
+                .format(develop, feature))
 
     # Get all commits being a part of the respective branches.
     develop_ancestors = sub.check_output(
@@ -243,12 +252,20 @@ def get_feature_ancestor(feature):
     ancestor_diff = diff.unified_diff(
             develop_ancestors.split('\n'), feature_ancestors.split('\n'))
 
+    ancestor = None
     # The first line to match this is the ancestor we are looking for.
     pattern = re.compile(' [0-9a-f]{40}$')
     for line in ancestor_diff:
         if pattern.match(line):
             ancestor = line.strip()
             break
+
+    # Not sure this can really happen, but just to be sure.
+    # This happens usually when you compare a commit with itself,
+    # but that is already being taken care of at the beginning of the function.
+    if ancestor is None:
+        raise AncestorNotFound('No common ancestor of {0} and {1} found.' \
+                .format(develop, feature))
 
     # Just to be sure, explode as soon as possible.
     assert ancestor
