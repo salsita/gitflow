@@ -186,7 +186,6 @@ class GitFlow(object):
     def _enforce_services(self):
         err = False
         for option in ('gitflow.pt.token',
-                       'gitflow.rb.repoid',
                        'reviewboard.url',
                        'reviewboard.server'):
             try:
@@ -204,10 +203,6 @@ Update your configuration by executing
                     if option == 'gitflow.pt.token':
                         value = self.get('workflow.token')
                         self.set('gitflow.pt.token', value)
-                        continue
-                    elif option == 'gitflow.rb.repoid':
-                        value = self.get('reviewboard.repoid')
-                        self.set('gitflow.rb.repoid', value)
                         continue
                 except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
                     pass
