@@ -48,7 +48,7 @@ Global (same for all projects)::
 
 * git config --global reviewboard.url https://example.com/rb/ (the trailing slash is REQUIRED)
 * git config --global reviewboard.server https://example.com/rb/
-* git config --global workflow.token <your PT token>
+* git config --global gitflow.pt.token 12345678910
 
 You will be prompted for the project-specific settings during ``git flow init``.
 
