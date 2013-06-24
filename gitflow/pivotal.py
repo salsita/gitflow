@@ -138,7 +138,7 @@ class Story(object):
     def get_release(self):
         assert self.is_feature() or self.is_bug()
         for label in self.get_labels():
-            m = re.match('release-' + _get_version_matcher() + '$', label)
+            m = re.match('release-(' + _get_version_matcher() + ')$', label)
             if m:
                 return m.groups()[0]
 
