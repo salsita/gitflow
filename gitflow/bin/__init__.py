@@ -259,7 +259,7 @@ class FeatureCommand(GitFlowCommand):
         # Fail as soon as possible if something is not right so that we don't
         # get Pivotal Tracker into an inconsistent state.
         rev_range = [get_feature_ancestor(full_name),
-                         repo.commit(full_name).hexsha]
+                     repo.commit(full_name).hexsha]
 
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
@@ -267,7 +267,7 @@ class FeatureCommand(GitFlowCommand):
         gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
-                       tagging_info=None, push=False)
+                       tagging_info=None, push=(not args.no_push))
         print 'OK'
 
         # Get and set the state of the feature.
@@ -307,14 +307,14 @@ class FeatureCommand(GitFlowCommand):
             print 'OK'
 
         #+++ Git modify merge message
-        sys.stdout.write('Amending merge commit message to include links ... ')
-        msg  = 'Finished {0} {1}\n\n'.format(f_prefix, name)
-        msg += 'PT-Story-URL: {0}\n'.format(story.get_url())
-        msg += 'RB-Review-Request-URL: {0}\n'.format(review.get_url())
-        git.commit('--amend', '-m', msg)
-        if not args.no_push:
-            git.push(gitflow.origin_name(), upstream)
-        print 'OK'
+        #sys.stdout.write('Amending merge commit message to include links ... ')
+        #msg  = 'Finished {0} {1}\n\n'.format(f_prefix, name)
+        #msg += 'PT-Story-URL: {0}\n'.format(story.get_url())
+        #msg += 'RB-Review-Request-URL: {0}\n'.format(review.get_url())
+        #git.commit('--amend', '-m', msg)
+        #if not args.no_push:
+        #    git.push(gitflow.origin_name(), upstream)
+        #print 'OK'
 
     #- checkout
     @classmethod
