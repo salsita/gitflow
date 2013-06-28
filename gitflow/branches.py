@@ -335,8 +335,11 @@ class FeatureBranchManager(BranchManager):
         assert not tagging_info, "FeatureBranchManager does not support tagging"
         gitflow = self.gitflow
         full_name = self.full_name(name)
-        gitflow.must_be_uptodate(full_name, fetch=fetch)
-        gitflow.must_be_uptodate(upstream, fetch=fetch)
+
+        if fetch:
+            gitflow.origin().fetch()
+        gitflow.must_be_uptodate(full_name)
+        gitflow.must_be_uptodate(upstream)
 
         if rebase:
             gitflow.rebase(self.identifier, name, interactive=False,
@@ -409,9 +412,12 @@ class ReleaseBranchManager(BranchManager):
         #   diese muessen dann gleich $ORIGIN/master bzw. $ORIGIN/develop sein
         gitflow = self.gitflow
         full_name = self.full_name(name)
-        gitflow.must_be_uptodate(full_name, fetch=fetch)
-        gitflow.must_be_uptodate(gitflow.develop_name(), fetch=fetch)
-        gitflow.must_be_uptodate(gitflow.master_name(), fetch=fetch)
+
+        if fetch:
+            gitflow.origin().fetch()
+        gitflow.must_be_uptodate(full_name)
+        gitflow.must_be_uptodate(gitflow.develop_name())
+        gitflow.must_be_uptodate(gitflow.master_name())
 
         to_push = [self.gitflow.develop_name(), self.gitflow.master_name()]
 

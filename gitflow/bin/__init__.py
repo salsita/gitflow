@@ -285,8 +285,8 @@ class FeatureCommand(GitFlowCommand):
             desc_cmd = ['git', 'log',
                         "--pretty="
                             "--------------------%n"
-                            "Author:   %an <%ae>%n"
-                            "Comitter: %cn <%ce>%n"
+                            "Author:    %an <%ae>%n"
+                            "Committer: %cn <%ce>%n"
                             "%n"
                             "%s%n%n"
                             "%b",
