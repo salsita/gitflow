@@ -452,11 +452,9 @@ Git config '%s' missing, please fill it in by executing
             for b in self.git.branch('-a', '--contains', commit).splitlines()]
 
 
-    def must_be_uptodate(self, branch, fetch):
+    def must_be_uptodate(self, branch):
         remote_branch = self.origin_name(branch)
         if remote_branch in self.branch_names(remote=True):
-            if fetch:
-                self.origin().fetch(branch)
             self.require_branches_equal(branch, remote_branch)
 
     @requires_repo
@@ -505,7 +503,7 @@ Git config '%s' missing, please fill it in by executing
                 # Warn here, since there is no harm in being ahead
                 warn("And local branch '%s' is ahead of '%s'." % (branch1, branch2))
             else:
-                raise SystemExit("Branches need merging first.")
+                raise SystemExit("Operation canceled, branches need merging first.")
 
     @requires_repo
     def start_transaction(self, message=None):
