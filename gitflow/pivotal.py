@@ -367,9 +367,12 @@ def prompt_user_to_select_story():
     # We're expecting input to start from 1, so we have to
     # subtract one here to get the list index.
     story = stories[index - 1]
-    slug = prompt_user_to_select_slug(story)
 
-    return [story.get_id(), str(story.get_id()) + '/' + slug]
+    if story.is_rejected():
+        return [story, None]
+
+    slug = prompt_user_to_select_slug(story)
+    return [story, str(story.get_id()) + '/' + slug]
 
 
 def prompt_user_to_select_slug(story):

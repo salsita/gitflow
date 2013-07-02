@@ -43,6 +43,9 @@ class MergeConflict(StatusError):
 
 class EmptyDiff(StatusError): pass
 
+class InconsistencyDetected(StatusError):
+    def __str__(self):
+        return "Inconsistency detected: {0}".format(self.args[0])
 
 class ObjectError(GitflowError): pass
 class BadObjectError(ObjectError): pass

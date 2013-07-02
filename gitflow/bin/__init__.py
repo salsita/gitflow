@@ -31,7 +31,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat)
+                                IllegalVersionFormat, InconsistencyDetected)
 import gitflow.pivotal as pivotal
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
@@ -178,8 +178,23 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
-        [story_id, name] = pivotal.prompt_user_to_select_story()
-        story = pivotal.Story(story_id)
+        [story, name] = pivotal.prompt_user_to_select_story()
+
+        if story.is_rejected():
+            sid = str(story.get_id())
+            gitflow.start_transaction('restart story {0}'.format(sid))
+            sys.stdout.write('Checking out the feature branch ... ')
+            try:
+                gitflow.checkout('feature', sid)
+                print('OK')
+            except NoSuchBranchError as e:
+                print('FAIL')
+                raise InconsistencyDetected(
+                    'The branch is missing for story {0}.'.format(sid))
+            sys.stdout.write('Updaring Pivotal Tracker ... ')
+            story.start()
+            print('OK')
+            return
 
         # :fixme: Why does the sh-version not require a clean working dir?
         gitflow.start_transaction('start feature branch %s (from %s)' % \
