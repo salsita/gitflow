@@ -56,6 +56,7 @@ class BranchReview(object):
         raise AttributeError
 
     def get_id(self):
+        assert self._rid
         return self._rid
 
     def get_url(self):
@@ -115,7 +116,6 @@ class BranchReview(object):
         return any(r['ship_it'] for r in reviews)
 
     def _update(self, **kwargs):
-        assert self._rid
         self._client.update_request(self.get_id(), fields=kwargs, publish=True)
 
     def _branch_to_rid(self, branch):
