@@ -8,7 +8,8 @@ import sys
 
 from gitflow.core import GitFlow
 from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
-                                NoSuchBranchError, AncestorNotFound, EmptyDiff)
+                                NoSuchBranchError, AncestorNotFound, EmptyDiff,
+                                PostReviewError)
 
 
 class ReviewNotAcceptedYet(GitflowError): pass
@@ -84,15 +85,24 @@ class BranchReview(object):
             cmd.append(str(self._rid))
         else:
             sys.stdout.write('new review ... ')
-        output = sub.check_output(cmd)
-        print
-        print
-        print '>>> rbt output'
-        print output
-        print '<<< rbt output'
+
+        p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+        (outdata, errdata) = p.communicate()
+
+        if p.returncode == 0:
+            print('OK')
+            print('>>>> rbt output')
+            print(outdata)
+            print('<<<< rbt output')
+        else:
+            print('FAIL')
+            print('>>>> rbt error output')
+            print(errdata)
+            print('<<<< rbt error output')
+            raise PostReviewError('Failed to post review request.')
 
         # Use list comprehension to get rid of emply trailing strings.
-        self._url = [line for line in output.split('\n') if line != ''][-1]
+        self._url = [line for line in outdata.split('\n') if line != ''][-1]
         self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
     def check_submit(self):

@@ -178,6 +178,9 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
+        # Check if develop in sync as soon as possible.
+        gitflow.must_be_uptodate(gitflow.develop_name())
+
         [story, name] = pivotal.prompt_user_to_select_story()
 
         if story.is_rejected():
@@ -314,7 +317,6 @@ class FeatureCommand(GitFlowCommand):
             summary = desc.split('\n')[7]
             review = BranchReview.from_identifier('feature', name, rev_range)
             review.post(summary, desc)
-            print 'OK'
 
             sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
             comment = 'New patch was uploaded into Review Board: ' + review.get_url()
