@@ -666,14 +666,23 @@ Git config '%s' missing, please fill it in by executing
             The checked out :class:`git.refs.Head` branch.
         """
         mgr = self.managers[identifier]
+        err = None
         try:
             branch = mgr.by_name_prefix(name)
             return branch.checkout()
-        except NoSuchBranchError, ex:
-            pass
+        except NoSuchBranchError as ex:
+            err = ex
 
-        branch = mgr.by_name_prefix(name, remote=True)
-        self.git.checkout(branch.name[len(self.origin_name())+1:])
+        try:
+            branch = mgr.by_name_prefix(name, remote=True)
+            self.git.checkout(branch.name[len(self.origin_name())+1:])
+        except NoSuchBranchError as ex:
+            if err is None:
+                err = ex
+
+        if err is not None:
+            raise err
+
         return branch
 
     @requires_initialized
