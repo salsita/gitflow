@@ -596,22 +596,36 @@ class ReleaseCommand(GitFlowCommand):
         print 'OK'
 
         #+++ Close (submit) all relevant reviews in Review Board
-        print 'Submitting all relevant review requests ... '
         feature_prefix = gitflow.get_prefix('feature')
-        err = None
-        for story in release.iter_stories():
-            prefix = feature_prefix + str(story.get_id())
-            try:
-                r = BranchReview.from_prefix(prefix)
-            except NoSuchBranchError, e:
-                err = e
-                print '    ' + str(e)
-                continue
-            r.submit()
-            print '    ' + str(r.get_id())
-        if not args.ignore_missing_reviews and err is not None:
-            raise SystemExit('FAIL')
-        print 'OK'
+
+        if not args.ignore_missing_reviews:
+            reviews = list()
+            reviews_expected = 0
+            err = None
+            print('Checking if all relevant stories have been reviewed ... ')
+            for story in release.iter_stories():
+                prefix = feature_prefix + str(story.get_id())
+                try:
+                    reviews_expected += 1
+                    r = BranchReview.from_prefix(prefix)
+                    r.check_submit()
+                    print('    ' + str(r.get_id()))
+                    reviews.append(r)
+                except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                    print('    ' + str(e))
+                except Exception as e:
+                    print('    ' + str(e))
+                    err = e
+            if err is not None:
+                raise SystemExit('An error detected, aborting...')
+            if len(reviews) != reviews_expected:
+                raise SystemExit('Some stories have not been reviewed yet,' \
+                        ' aborting...')
+            print('OK')
+
+            print 'Submitting all relevant review requests ... '
+            for r in reviews:
+                r.submit()
 
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)

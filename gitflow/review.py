@@ -94,11 +94,19 @@ class BranchReview(object):
         self._url = [line for line in output.split('\n') if line != ''][-1]
         self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
-    def submit(self):
+    def check_submit(self):
+        assert self._status
+        if self._status == 'submitted':
+            return
         assert self._rid
         if not self.is_accepted():
-            raise ReviewNotAcceptedYet('review %s not accepted yet' \
+            raise ReviewNotAcceptedYet('Review %s has not been accepted yet' \
                                        % str(self._rid))
+
+    def submit(self):
+        assert self._status
+        if self._status == 'submitted':
+            return
         self._update(status='submitted')
 
     def is_accepted(self):
@@ -107,6 +115,7 @@ class BranchReview(object):
         return any(r['ship_it'] for r in reviews)
 
     def _update(self, **kwargs):
+        assert self._rid
         self._client.update_request(self.get_id(), fields=kwargs, publish=True)
 
     def _branch_to_rid(self, branch):
@@ -123,16 +132,18 @@ class BranchReview(object):
         client = _get_client()
         options = dict(repository=_get_repo_id(), status='all')
         reviews = [r for r in client.get_review_requests(options=options)
-                     if r['branch'].startswith(prefix)]
+                     if r['branch'].startswith(prefix) \
+                             and r['status'] != 'discarded']
         if len(reviews) == 0:
             raise NoSuchBranchError(
                     'No review request found for branch prefixed with ' + prefix)
         elif len(reviews) == 1:
             r = reviews[0]
-            t = type('BranchReview', (cls,), dict(_rid=r['id']))
+            t = type('BranchReview', (cls,),
+                    dict(_rid=r['id'], _status=r['status']))
             return t(r['branch'])
         else:
-            raise MultipleReviewRequestsForBranch(r['branch'])
+            raise MultipleReviewRequestsForBranch(reviews[0]['branch'])
 
     @classmethod
     def from_identifier(cls, identifier, name, rev_range=None):
