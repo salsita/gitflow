@@ -48,7 +48,7 @@ Global (same for all projects)::
 
 * git config --global reviewboard.url https://example.com/rb/ (the trailing slash is REQUIRED)
 * git config --global reviewboard.server https://example.com/rb/
-* git config --global workflow.token <your PT token>
+* git config --global gitflow.pt.token 12345678910
 
 You will be prompted for the project-specific settings during ``git flow init``.
 
@@ -140,6 +140,11 @@ Review Board and Pivotal Tracker are in place, failing if that is not the case.
 Creating feature/release/hotfix/support branches
 ----------------------------------------------------
 
+The list of command line flags listed here is not complete. Check the wiki for
+a more complete list. The best documentation is, however,::
+
+      git flow <subcmd> <subsubcmd> -h
+
 * To list/start/finish feature branches, use::
   
       git flow feature
@@ -170,8 +175,12 @@ Creating feature/release/hotfix/support branches
   
       git flow release
       git flow release start <major.minor.release> [<base>]
-      git flow release finish [<major.minor.release>]
+      git flow release finish [-R|--ignore-missing-reviews] [<major.minor.release>]
   
+  If you are not using Review Board for your project, you can use
+  ``-R`` or ``--ignore-missing-reviews`` to skip the reviews check while doing
+  a release.
+
 * To list/start/finish hotfix branches (not supported by Salsita), use::
   
       git flow hotfix

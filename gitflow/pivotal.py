@@ -32,7 +32,9 @@ def _iter_current_stories():
         return
     for iteration in iterations['iterations']:
         for story in iteration['stories']:
-            yield Story.from_dict(story)
+            s = Story.from_dict(story)
+            if s.is_feature() or s.is_bug():
+                yield s
 
 def _iter_backlog_stories():
     client = _get_client()
@@ -42,7 +44,9 @@ def _iter_backlog_stories():
         return
     for iteration in iterations['iterations']:
         for story in iteration['stories']:
-            yield Story.from_dict(story)
+            s = Story.from_dict(story)
+            if s.is_feature() or s.is_bug():
+                yield s
 
 def _iter_stories():
     return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
@@ -180,11 +184,6 @@ class Story(object):
     def is_bug(self):
         return self.get_type() == 'bug'
     #--- Bug-specific stuff
-
-    #+++ Chore-specific stuff
-    def is_chore(self):
-        return self.get_type() == 'chore'
-    #--- Chore-specific stuff
 
     def dump(self, highlight_labels=[]):
         story = self._story
@@ -327,8 +326,6 @@ def prompt_user_to_select_story():
     stories = list()
     print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
     for story in _iter_stories():
-        if story.is_chore():
-            continue
         if story.is_feature() and not story.is_estimated():
             continue
         # You do not start a story if its branch is present or it is
@@ -370,9 +367,12 @@ def prompt_user_to_select_story():
     # We're expecting input to start from 1, so we have to
     # subtract one here to get the list index.
     story = stories[index - 1]
-    slug = prompt_user_to_select_slug(story)
 
-    return [story.get_id(), str(story.get_id()) + '/' + slug]
+    if story.is_rejected():
+        return [story, None]
+
+    slug = prompt_user_to_select_slug(story)
+    return [story, str(story.get_id()) + '/' + slug]
 
 
 def prompt_user_to_select_slug(story):

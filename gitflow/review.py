@@ -8,7 +8,8 @@ import sys
 
 from gitflow.core import GitFlow
 from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
-                                NoSuchBranchError, AncestorNotFound, EmptyDiff)
+                                NoSuchBranchError, AncestorNotFound, EmptyDiff,
+                                PostReviewError)
 
 
 class ReviewNotAcceptedYet(GitflowError): pass
@@ -56,6 +57,7 @@ class BranchReview(object):
         raise AttributeError
 
     def get_id(self):
+        assert self._rid
         return self._rid
 
     def get_url(self):
@@ -83,22 +85,39 @@ class BranchReview(object):
             cmd.append(str(self._rid))
         else:
             sys.stdout.write('new review ... ')
-        output = sub.check_output(cmd)
-        print
-        print
-        print '>>> rbt output'
-        print output
-        print '<<< rbt output'
+
+        p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+        (outdata, errdata) = p.communicate()
+
+        if p.returncode == 0:
+            print('OK')
+            print('>>>> rbt output')
+            print(outdata)
+            print('<<<< rbt output')
+        else:
+            print('FAIL')
+            print('>>>> rbt error output')
+            print(errdata)
+            print('<<<< rbt error output')
+            raise PostReviewError('Failed to post review request.')
 
         # Use list comprehension to get rid of emply trailing strings.
-        self._url = [line for line in output.split('\n') if line != ''][-1]
+        self._url = [line for line in outdata.split('\n') if line != ''][-1]
         self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
-    def submit(self):
+    def check_submit(self):
+        assert self._status
+        if self._status == 'submitted':
+            return
         assert self._rid
         if not self.is_accepted():
-            raise ReviewNotAcceptedYet('review %s not accepted yet' \
+            raise ReviewNotAcceptedYet('Review %s has not been accepted yet' \
                                        % str(self._rid))
+
+    def submit(self):
+        assert self._status
+        if self._status == 'submitted':
+            return
         self._update(status='submitted')
 
     def is_accepted(self):
@@ -123,16 +142,18 @@ class BranchReview(object):
         client = _get_client()
         options = dict(repository=_get_repo_id(), status='all')
         reviews = [r for r in client.get_review_requests(options=options)
-                     if r['branch'].startswith(prefix)]
+                     if r['branch'].startswith(prefix) \
+                             and r['status'] != 'discarded']
         if len(reviews) == 0:
             raise NoSuchBranchError(
                     'No review request found for branch prefixed with ' + prefix)
         elif len(reviews) == 1:
             r = reviews[0]
-            t = type('BranchReview', (cls,), dict(_rid=r['id']))
+            t = type('BranchReview', (cls,),
+                    dict(_rid=r['id'], _status=r['status']))
             return t(r['branch'])
         else:
-            raise MultipleReviewRequestsForBranch(r['branch'])
+            raise MultipleReviewRequestsForBranch(reviews[0]['branch'])
 
     @classmethod
     def from_identifier(cls, identifier, name, rev_range=None):

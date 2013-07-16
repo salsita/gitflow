@@ -452,11 +452,9 @@ Git config '%s' missing, please fill it in by executing
             for b in self.git.branch('-a', '--contains', commit).splitlines()]
 
 
-    def must_be_uptodate(self, branch, fetch):
+    def must_be_uptodate(self, branch):
         remote_branch = self.origin_name(branch)
         if remote_branch in self.branch_names(remote=True):
-            if fetch:
-                self.origin().fetch(branch)
             self.require_branches_equal(branch, remote_branch)
 
     @requires_repo
@@ -505,7 +503,7 @@ Git config '%s' missing, please fill it in by executing
                 # Warn here, since there is no harm in being ahead
                 warn("And local branch '%s' is ahead of '%s'." % (branch1, branch2))
             else:
-                raise SystemExit("Branches need merging first.")
+                raise SystemExit("Operation canceled, branches need merging first.")
 
     @requires_repo
     def start_transaction(self, message=None):
@@ -668,14 +666,23 @@ Git config '%s' missing, please fill it in by executing
             The checked out :class:`git.refs.Head` branch.
         """
         mgr = self.managers[identifier]
+        err = None
         try:
             branch = mgr.by_name_prefix(name)
             return branch.checkout()
-        except NoSuchBranchError, ex:
-            pass
+        except NoSuchBranchError as ex:
+            err = ex
 
-        branch = mgr.by_name_prefix(name, remote=True)
-        self.git.checkout(branch.name[len(self.origin_name())+1:])
+        try:
+            branch = mgr.by_name_prefix(name, remote=True)
+            self.git.checkout(branch.name[len(self.origin_name())+1:])
+        except NoSuchBranchError as ex:
+            if err is None:
+                err = ex
+
+        if err is not None:
+            raise err
+
         return branch
 
     @requires_initialized

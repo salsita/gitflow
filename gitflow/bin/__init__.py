@@ -31,7 +31,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat)
+                                IllegalVersionFormat, InconsistencyDetected)
 import gitflow.pivotal as pivotal
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
@@ -178,8 +178,26 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
-        [story_id, name] = pivotal.prompt_user_to_select_story()
-        story = pivotal.Story(story_id)
+        # Check if develop in sync as soon as possible.
+        gitflow.must_be_uptodate(gitflow.develop_name())
+
+        [story, name] = pivotal.prompt_user_to_select_story()
+
+        if story.is_rejected():
+            sid = str(story.get_id())
+            gitflow.start_transaction('restart story {0}'.format(sid))
+            sys.stdout.write('Checking out the feature branch ... ')
+            try:
+                gitflow.checkout('feature', sid)
+                print('OK')
+            except NoSuchBranchError as e:
+                print('FAIL')
+                raise InconsistencyDetected(
+                    'The branch is missing for story {0}.'.format(sid))
+            sys.stdout.write('Updating Pivotal Tracker ... ')
+            story.start()
+            print('OK')
+            return
 
         # :fixme: Why does the sh-version not require a clean working dir?
         gitflow.start_transaction('start feature branch %s (from %s)' % \
@@ -259,7 +277,7 @@ class FeatureCommand(GitFlowCommand):
         # Fail as soon as possible if something is not right so that we don't
         # get Pivotal Tracker into an inconsistent state.
         rev_range = [get_feature_ancestor(full_name),
-                         repo.commit(full_name).hexsha]
+                     repo.commit(full_name).hexsha]
 
         #+++ Git manipulation
         sys.stdout.write('Finishing feature branch ... upstream %s ... ' \
@@ -267,7 +285,7 @@ class FeatureCommand(GitFlowCommand):
         gitflow.finish('feature', name, upstream=upstream,
                        fetch=True, rebase=args.rebase,
                        keep=True, force_delete=args.force_delete,
-                       tagging_info=None, push=False)
+                       tagging_info=None, push=(not args.no_push))
         print 'OK'
 
         # Get and set the state of the feature.
@@ -285,8 +303,8 @@ class FeatureCommand(GitFlowCommand):
             desc_cmd = ['git', 'log',
                         "--pretty="
                             "--------------------%n"
-                            "Author:   %an <%ae>%n"
-                            "Comitter: %cn <%ce>%n"
+                            "Author:    %an <%ae>%n"
+                            "Committer: %cn <%ce>%n"
                             "%n"
                             "%s%n%n"
                             "%b",
@@ -299,7 +317,6 @@ class FeatureCommand(GitFlowCommand):
             summary = desc.split('\n')[7]
             review = BranchReview.from_identifier('feature', name, rev_range)
             review.post(summary, desc)
-            print 'OK'
 
             sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
             comment = 'New patch was uploaded into Review Board: ' + review.get_url()
@@ -307,14 +324,14 @@ class FeatureCommand(GitFlowCommand):
             print 'OK'
 
         #+++ Git modify merge message
-        sys.stdout.write('Amending merge commit message to include links ... ')
-        msg  = 'Finished {0} {1}\n\n'.format(f_prefix, name)
-        msg += 'PT-Story-URL: {0}\n'.format(story.get_url())
-        msg += 'RB-Review-Request-URL: {0}\n'.format(review.get_url())
-        git.commit('--amend', '-m', msg)
-        if not args.no_push:
-            git.push(gitflow.origin_name(), upstream)
-        print 'OK'
+        #sys.stdout.write('Amending merge commit message to include links ... ')
+        #msg  = 'Finished {0} {1}\n\n'.format(f_prefix, name)
+        #msg += 'PT-Story-URL: {0}\n'.format(story.get_url())
+        #msg += 'RB-Review-Request-URL: {0}\n'.format(review.get_url())
+        #git.commit('--amend', '-m', msg)
+        #if not args.no_push:
+        #    git.push(gitflow.origin_name(), upstream)
+        #print 'OK'
 
     #- checkout
     @classmethod
@@ -596,22 +613,36 @@ class ReleaseCommand(GitFlowCommand):
         print 'OK'
 
         #+++ Close (submit) all relevant reviews in Review Board
-        print 'Submitting all relevant review requests ... '
         feature_prefix = gitflow.get_prefix('feature')
-        err = None
-        for story in release.iter_stories():
-            prefix = feature_prefix + str(story.get_id())
-            try:
-                r = BranchReview.from_prefix(prefix)
-            except NoSuchBranchError, e:
-                err = e
-                print '    ' + str(e)
-                continue
-            r.submit()
-            print '    ' + str(r.get_id())
-        if not args.ignore_missing_reviews and err is not None:
-            raise SystemExit('FAIL')
-        print 'OK'
+
+        if not args.ignore_missing_reviews:
+            reviews = list()
+            reviews_expected = 0
+            err = None
+            print('Checking if all relevant stories have been reviewed ... ')
+            for story in release.iter_stories():
+                prefix = feature_prefix + str(story.get_id())
+                try:
+                    reviews_expected += 1
+                    r = BranchReview.from_prefix(prefix)
+                    r.check_submit()
+                    print('    ' + str(r.get_id()))
+                    reviews.append(r)
+                except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                    print('    ' + str(e))
+                except Exception as e:
+                    print('    ' + str(e))
+                    err = e
+            if err is not None:
+                raise SystemExit('An error detected, aborting...')
+            if len(reviews) != reviews_expected:
+                raise SystemExit('Some stories have not been reviewed yet,' \
+                        ' aborting...')
+            print('OK')
+
+            print 'Submitting all relevant review requests ... '
+            for r in reviews:
+                r.submit()
 
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)
