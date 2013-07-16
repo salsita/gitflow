@@ -194,7 +194,7 @@ class FeatureCommand(GitFlowCommand):
                 print('FAIL')
                 raise InconsistencyDetected(
                     'The branch is missing for story {0}.'.format(sid))
-            sys.stdout.write('Updaring Pivotal Tracker ... ')
+            sys.stdout.write('Updating Pivotal Tracker ... ')
             story.start()
             print('OK')
             return
