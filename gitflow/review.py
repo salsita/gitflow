@@ -105,7 +105,7 @@ class BranchReview(object):
         self._url = [line for line in outdata.split('\n') if line != ''][-1]
         self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
-    def check_submit(self):
+    def verify_submit(self):
         assert self._status
         if self._status == 'submitted':
             return

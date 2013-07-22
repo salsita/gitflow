@@ -614,7 +614,7 @@ class ReleaseCommand(GitFlowCommand):
 
         #+++ Check QA
         release = pivotal.Release(version)
-        print "Checking if all relevant stories have been QA'd ... "
+        print "Checking Pivotal Tracker stories ... "
         try:
             release.try_deliver()
         except GitflowError:
@@ -634,7 +634,7 @@ class ReleaseCommand(GitFlowCommand):
                 try:
                     reviews_expected += 1
                     r = BranchReview.from_prefix(prefix)
-                    r.check_submit()
+                    r.verify_submit()
                     print('    ' + str(r.get_id()))
                     reviews.append(r)
                 except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
