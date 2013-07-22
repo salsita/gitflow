@@ -31,7 +31,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat, InconsistencyDetected)
+                                IllegalVersionFormat, InconsistencyDetected,
+                                PointMeError)
 import gitflow.pivotal as pivotal
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
@@ -521,9 +522,14 @@ class ReleaseCommand(GitFlowCommand):
             print '    None'
         print
         any_candidate = False
+        any_pointme = False
         print 'Stories to be newly assigned to this release:'
         for story in release.iter_candidates():
-            sys.stdout.write('    ')
+            if story.is_labeled('point me'):
+                sys.stdout.write('PM  ')
+                any_pointme = True
+            else:
+                sys.stdout.write('    ')
             story.dump()
             any_candidate = True
         if not any_candidate:
@@ -533,6 +539,9 @@ class ReleaseCommand(GitFlowCommand):
         if not any_candidate:
             raise SystemExit('No new stories to be added to the release,' \
                     'aborting...')
+
+        if any_pointme:
+            raise PointMeError("Some stories are labeled with the 'point me' label")
 
         if not release.prompt_for_confirmation():
             raise SystemExit('Aborting...')

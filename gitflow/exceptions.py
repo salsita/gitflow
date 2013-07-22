@@ -26,7 +26,6 @@ class AlreadyInitialized(StatusError):
     def __str__(self):
         return ("Already initialized for gitflow.\n"
                 "To force reinitialization use: git flow init -f")
-class ReleaseAlreadyAssigned(StatusError): pass
 class MultipleReviewRequestsForBranch(StatusError):
     def __str__(self):
         return 'Multiple review requests for {0} were found'.format(self.args[0])
@@ -40,6 +39,10 @@ class MergeConflict(StatusError):
             "    git mergetool",
             "    git commit",
             ])
+
+class StoryError(StatusError): pass
+class ReleaseAlreadyAssigned(StoryError): pass
+class PointMeError(StoryError): pass
 
 class EmptyDiff(StatusError): pass
 
