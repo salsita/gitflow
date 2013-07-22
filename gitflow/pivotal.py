@@ -240,11 +240,15 @@ class Release(object):
     def try_deliver(self):
         err = False
         for story in self.iter_stories():
-            if not story.is_labeled('qa+'):
+            if not story.is_labeled('qa+') \
+                    and not (story.is_feature() and story.get_estimate() > 0):
                 err = True
                 print "    Story not QA'd: " + story.get_url()
+            if story.is_labeled('point me'):
+                err = True
+                print "    Story labeled 'point me': " + story.get_url()
         if err:
-            raise StatusError("There were some stories that were not QA's, operation canceled.")
+            raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
     def deliver(self):
         print 'Following stories were delivered as of release %s:' \
