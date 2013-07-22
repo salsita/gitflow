@@ -621,37 +621,32 @@ class ReleaseCommand(GitFlowCommand):
             raise SystemExit('FAIL')
         print 'OK'
 
-        #+++ Close (submit) all relevant reviews in Review Board
+        #+++ Check all relevant review requests in Review Board
         feature_prefix = gitflow.get_prefix('feature')
 
-        if not args.ignore_missing_reviews:
-            reviews = list()
-            reviews_expected = 0
-            err = None
-            print('Checking if all relevant stories have been reviewed ... ')
-            for story in release.iter_stories():
-                prefix = feature_prefix + str(story.get_id())
-                try:
-                    reviews_expected += 1
-                    r = BranchReview.from_prefix(prefix)
-                    r.verify_submit()
-                    print('    ' + str(r.get_id()))
-                    reviews.append(r)
-                except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
-                    print('    ' + str(e))
-                except Exception as e:
-                    print('    ' + str(e))
-                    err = e
-            if err is not None:
-                raise SystemExit('An error detected, aborting...')
-            if len(reviews) != reviews_expected:
-                raise SystemExit('Some stories have not been reviewed yet,' \
-                        ' aborting...')
-            print('OK')
-
-            print 'Submitting all relevant review requests ... '
-            for r in reviews:
-                r.submit()
+        reviews = list()
+        reviews_expected = 0
+        err = None
+        print('Checking if all relevant stories have been reviewed ... ')
+        for story in release.iter_stories():
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                reviews_expected += 1
+                r = BranchReview.from_prefix(prefix)
+                r.verify_submit()
+                print('    ' + str(r.get_id()))
+                reviews.append(r)
+            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                print('    ' + str(e))
+            except Exception as e:
+                print('    ' + str(e))
+                err = e
+        if err is not None:
+            raise SystemExit('An error detected, aborting...')
+        if not args.ignore_missing_reviews and len(reviews) != reviews_expected:
+            raise SystemExit('Some stories have not been reviewed yet,' \
+                    ' aborting...')
+        print('OK')
 
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)
@@ -666,6 +661,14 @@ class ReleaseCommand(GitFlowCommand):
                                  keep=args.keep, force_delete=False,
                                  tagging_info=tagging_info, push=(not args.no_push))
         print 'OK'
+
+        #+++ Submit all relevant review requests
+        # This is happening only after the branches are successfully merges so
+        # that we don't end up in an inconsistent state.
+        sys.stdout.write('Submitting all relevant review requests found ... ')
+        for r in reviews:
+            r.submit()
+        print('OK')
 
         #+++ Collect local and remote branches to be deleted
         sys.stdout.write('Collecting branches to be deleted ... ')
