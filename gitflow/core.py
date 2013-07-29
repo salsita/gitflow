@@ -11,7 +11,7 @@ import os
 import sys
 import time
 import traceback
-from functools import wraps, partial
+from functools import wraps
 
 import git
 from git import (Git, Repo, InvalidGitRepositoryError, RemoteReference,
