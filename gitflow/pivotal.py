@@ -240,8 +240,11 @@ class Release(object):
     def try_deliver(self):
         err = False
         for story in self.iter_stories():
-            if not story.is_labeled('qa+') \
-                    and not (story.is_feature() and story.get_estimate() > 0):
+            if not story.is_labeled('qa+'):
+                # Allow zero-point stories not to be QA'd since they are
+                # by definition refactoring stories.
+                if story.is_feature() and story.get_estimate() == 0:
+                    continue
                 err = True
                 print "    Story not QA'd: " + story.get_url()
             if story.is_labeled('point me'):
