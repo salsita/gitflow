@@ -663,7 +663,7 @@ class ReleaseCommand(GitFlowCommand):
         print 'OK'
 
         #+++ Submit all relevant review requests
-        # This is happening only after the branches are successfully merges so
+        # This is happening only after the branches are successfully merged so
         # that we don't end up in an inconsistent state.
         sys.stdout.write('Submitting all relevant review requests found ... ')
         for r in reviews:
