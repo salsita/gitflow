@@ -277,7 +277,7 @@ class FeatureCommand(GitFlowCommand):
 
         # Fail as soon as possible if something is not right so that we don't
         # get Pivotal Tracker into an inconsistent state.
-        rev_range = [get_feature_ancestor(full_name),
+        rev_range = [get_feature_ancestor(full_name, upstream),
                      repo.commit(full_name).hexsha]
 
         #+++ Git manipulation
