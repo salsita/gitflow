@@ -20,6 +20,7 @@ except:
     pass
 
 from gitflow.core import GitFlow as CoreGitFlow, warn, info
+from gitflow.util import pick
 
 from gitflow.exceptions import (AlreadyInitialized, NotInitialized,
                                 NoSuchLocalBranchError, NoSuchBranchError,
@@ -143,37 +144,11 @@ def _ask_name(args, name, question):
     if not gitflow.get(name, None) or args.force:
         _ask_config(args, name, question)
 
-def _pick(title, source):
-    print
-    print 'Please choose one of the following %s:' % title
-    msg = '    Loading...'
-    sys.stdout.write(msg)
-    sys.stdout.flush()
-    suggestions = source()
-    sys.stdout.write('\r' * len(msg))
-    while True:
-        i = 0
-        for sid, sname in suggestions:
-            i += 1
-            print '    [%d] %s' % (i, sname)
-        a = raw_input("Insert the sequence number (or 'q' to quit): ")
-        if a == 'q':
-            raise SystemExit('Operation canceled.')
-        try:
-            answer = int(a)
-        except ValueError:
-            print 'Please specify a number betweet 1 and %i:' % i
-            continue
-        if answer >= 1 and answer <= i:
-            return suggestions[answer-1]
-
 def _ask_pt_projid():
-    gitflow.set('gitflow.pt.projectid',
-                _pick('Pivotal Tracker projects', pt.list_projects)[0])
+    pick('gitflow.pt.projectid', 'Pivotal Tracker projects', pt.list_projects)
 
 def _ask_rb_repoid():
-    gitflow.set('gitflow.rb.repoid',
-                _pick('Review Board repositories', rb.list_repos)[0])
+    pick('gitflow.rb.repoid', 'Review Board repositories', rb.list_repos)
 
 def run_default(args):
     global gitflow
