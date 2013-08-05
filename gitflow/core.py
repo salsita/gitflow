@@ -722,6 +722,7 @@ Git config '%s' missing, please fill it in by executing
         try:
             branch = mgr.by_name_prefix(name, remote=True)
             self.git.checkout(branch.name[len(self.origin_name())+1:])
+            err = None
         except NoSuchBranchError as ex:
             if err is None:
                 err = ex
