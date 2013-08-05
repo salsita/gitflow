@@ -172,12 +172,12 @@ a more complete list. The best documentation is, however,::
       git flow feature pull <remote> <name>
 
 * To list/start/deploy/finish release branches, use::
-  
+
       git flow release
       git flow release start [-D|--no-deploy] <major.minor.release> [<base>]
       git flow release finish [-R|--ignore-missing-reviews] [<major.minor.release>]
       git flow release deploy <major.minor.release> {qa|client|production}
-  
+
   ``release start`` will by default access Jenkins and it will trigger the
   deployment job paired with your project. No need to set up any git config
   manually, you will be prompted at run time.
@@ -197,7 +197,7 @@ a more complete list. The best documentation is, however,::
   the appropriate Jenkins job will be triggered for you.
 
  * To list/start/finish hotfix branches (not supported by Salsita), use::
-  
+
       git flow hotfix
       git flow hotfix start <release> [<base>]
       git flow hotfix finish <release>
