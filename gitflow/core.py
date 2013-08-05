@@ -302,6 +302,27 @@ Git config '%s' missing, please fill it in by executing
             def __init__(self, remote):
                 self._remote = remote
 
+            def __str__(self):
+                return self._remote.__str__()
+
+            def __repr__(self):
+                return self._remote.__repr__()
+
+            def __eq__(self, other):
+                return self._remote.__eq__(other)
+
+            def __ne__(self, other):
+                return self._remote.__ne__(other)
+
+            def __hash__(self):
+                return self._remote.__hash__()
+
+            # For some reason __getattribute__ is making infinite recursion,
+            # so let's use __getattr__.
+            def __getattr__(self, name):
+                return self._remote.__getattribute__(name)
+
+            # This is the main monkey patching part.
             def fetch(self, refspec=None, progress=None, **kwargs):
                 # Let's try 3 times...
                 err = None
@@ -318,11 +339,6 @@ Git config '%s' missing, please fill it in by executing
                             raise e
                 # If we somehow get the same exception 3 times, just raise anyway.
                 raise err
-
-            # For some reason __getattribute__ is making infinite recursion,
-            # so let's use __getattr__.
-            def __getattr__(self, name):
-                return self._remote.__getattribute__(name)
 
         return RemoteWrapper(remote)
 
