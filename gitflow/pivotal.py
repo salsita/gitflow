@@ -228,6 +228,11 @@ class Release(object):
             return
         self._current_stories = list(_iter_current_stories())
 
+    def __iter__(self):
+        for story in self._current_stories:
+            if story.is_labeled('release-' + self._version):
+                yield story
+
     def get_version(self):
         assert self._version
         return self._version
@@ -238,7 +243,7 @@ class Release(object):
 
     def try_deliver(self):
         err = False
-        for story in self.iter_stories():
+        for story in self:
             if not story.is_labeled('qa+'):
                 # Allow zero-point stories not to be QA'd since they are
                 # by definition refactoring stories.
@@ -255,7 +260,7 @@ class Release(object):
     def deliver(self):
         print 'Following stories were delivered as of release %s:' \
               % self._version
-        for story in self.iter_stories():
+        for story in self:
             story.deliver()
             sys.stdout.write('    ')
             story.dump()
@@ -266,11 +271,6 @@ class Release(object):
             return True
         return False
 
-    def iter_stories(self):
-        for story in self._current_stories:
-            if story.is_labeled('release-' + self._version):
-                yield story
-
     def iter_candidates(self):
         for story in self._current_stories:
             if (story.is_feature() or story.is_bug()) \
@@ -280,7 +280,7 @@ class Release(object):
 
     def dump_stories(self):
         print '%s %s %s %s' % (32 * '-', 'Release', self._version, 33 * '-')
-        for story in self.iter_stories():
+        for story in self:
             story.dump(highlight_labels=['release-' + self._version])
         print 80 * '-' + '\n'
 

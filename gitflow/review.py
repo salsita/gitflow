@@ -162,6 +162,43 @@ class BranchReview(object):
         return cls(prefix + name, rev_range)
 
 
+class Release(object):
+    def __init__(self, stories):
+        self._G = GitFlow()
+        self._stories = stories
+
+    def try_submit(self, ignore_missing_reviews):
+        assert self._stories
+        feature_prefix = self._G.get_prefix('feature')
+
+        self._reviews = []
+        reviews_expected = 0
+        err = None
+
+        for story in self._stories:
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                reviews_expected += 1
+                review = BranchReview.from_prefix(prefix)
+                review.verify_submit()
+                print('    ' + str(review.get_id()))
+                self._reviews.append(review)
+            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                print('    ' + str(e))
+            except Exception as e:
+                print('    ' + str(e))
+                err = e
+        if err is not None:
+            raise SystemExit('An error detected, aborting...')
+        if not ignore_missing_reviews and len(self._reviews) != reviews_expected:
+            raise SystemExit('Some stories have not been reviewed yet,' \
+                    ' aborting...')
+
+    def submit(self):
+        assert self._reviews
+        for review in self._reviews:
+            review.submit()
+
 def post_review(self, identifier, name, post_new):
     mgr = self.managers[identifier]
     branch = mgr.by_name_prefix(name)
