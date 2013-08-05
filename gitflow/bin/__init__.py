@@ -31,7 +31,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat, InconsistencyDetected)
+                                IllegalVersionFormat, InconsistencyDetected,
+                                PointMeError)
 import gitflow.pivotal as pivotal
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
@@ -259,7 +260,7 @@ class FeatureCommand(GitFlowCommand):
 
         #+++ PT story stuff
         sys.stdout.write('Getting data from Pivotal Tracker ... ')
-        story_id = pivotal.get_story_id_from_branch_name(name)
+        story_id = pivotal.get_story_id_from_branch_name('feature', name)
         story = pivotal.Story(story_id)
         release = story.get_release()
         print 'OK'
@@ -276,7 +277,7 @@ class FeatureCommand(GitFlowCommand):
 
         # Fail as soon as possible if something is not right so that we don't
         # get Pivotal Tracker into an inconsistent state.
-        rev_range = [get_feature_ancestor(full_name),
+        rev_range = [get_feature_ancestor(full_name, upstream),
                      repo.commit(full_name).hexsha]
 
         #+++ Git manipulation
@@ -521,9 +522,14 @@ class ReleaseCommand(GitFlowCommand):
             print '    None'
         print
         any_candidate = False
+        any_pointme = False
         print 'Stories to be newly assigned to this release:'
         for story in release.iter_candidates():
-            sys.stdout.write('    ')
+            if story.is_labeled('point me'):
+                sys.stdout.write('PM  ')
+                any_pointme = True
+            else:
+                sys.stdout.write('    ')
             story.dump()
             any_candidate = True
         if not any_candidate:
@@ -533,6 +539,9 @@ class ReleaseCommand(GitFlowCommand):
         if not any_candidate:
             raise SystemExit('No new stories to be added to the release,' \
                     'aborting...')
+
+        if any_pointme:
+            raise PointMeError("Some stories are labeled with the 'point me' label")
 
         if not release.prompt_for_confirmation():
             raise SystemExit('Aborting...')
@@ -605,44 +614,39 @@ class ReleaseCommand(GitFlowCommand):
 
         #+++ Check QA
         release = pivotal.Release(version)
-        print "Checking if all relevant stories have been QA'd ... "
+        print "Checking Pivotal Tracker stories ... "
         try:
             release.try_deliver()
         except GitflowError:
             raise SystemExit('FAIL')
         print 'OK'
 
-        #+++ Close (submit) all relevant reviews in Review Board
+        #+++ Check all relevant review requests in Review Board
         feature_prefix = gitflow.get_prefix('feature')
 
-        if not args.ignore_missing_reviews:
-            reviews = list()
-            reviews_expected = 0
-            err = None
-            print('Checking if all relevant stories have been reviewed ... ')
-            for story in release.iter_stories():
-                prefix = feature_prefix + str(story.get_id())
-                try:
-                    reviews_expected += 1
-                    r = BranchReview.from_prefix(prefix)
-                    r.check_submit()
-                    print('    ' + str(r.get_id()))
-                    reviews.append(r)
-                except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
-                    print('    ' + str(e))
-                except Exception as e:
-                    print('    ' + str(e))
-                    err = e
-            if err is not None:
-                raise SystemExit('An error detected, aborting...')
-            if len(reviews) != reviews_expected:
-                raise SystemExit('Some stories have not been reviewed yet,' \
-                        ' aborting...')
-            print('OK')
-
-            print 'Submitting all relevant review requests ... '
-            for r in reviews:
-                r.submit()
+        reviews = list()
+        reviews_expected = 0
+        err = None
+        print('Checking if all relevant stories have been reviewed ... ')
+        for story in release.iter_stories():
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                reviews_expected += 1
+                r = BranchReview.from_prefix(prefix)
+                r.verify_submit()
+                print('    ' + str(r.get_id()))
+                reviews.append(r)
+            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                print('    ' + str(e))
+            except Exception as e:
+                print('    ' + str(e))
+                err = e
+        if err is not None:
+            raise SystemExit('An error detected, aborting...')
+        if not args.ignore_missing_reviews and len(reviews) != reviews_expected:
+            raise SystemExit('Some stories have not been reviewed yet,' \
+                    ' aborting...')
+        print('OK')
 
         #+++ Merge release branch into develop and master
         sys.stdout.write('Finishing release branch %s ... ' % version)
@@ -657,6 +661,14 @@ class ReleaseCommand(GitFlowCommand):
                                  keep=args.keep, force_delete=False,
                                  tagging_info=tagging_info, push=(not args.no_push))
         print 'OK'
+
+        #+++ Submit all relevant review requests
+        # This is happening only after the branches are successfully merged so
+        # that we don't end up in an inconsistent state.
+        sys.stdout.write('Submitting all relevant review requests found ... ')
+        for r in reviews:
+            r.submit()
+        print('OK')
 
         #+++ Collect local and remote branches to be deleted
         sys.stdout.write('Collecting branches to be deleted ... ')

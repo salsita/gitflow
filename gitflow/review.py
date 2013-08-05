@@ -105,7 +105,7 @@ class BranchReview(object):
         self._url = [line for line in outdata.split('\n') if line != ''][-1]
         self._rid = [f for f in self._url.split('/') if f != ''][-1]
 
-    def check_submit(self):
+    def verify_submit(self):
         assert self._status
         if self._status == 'submitted':
             return
@@ -251,27 +251,26 @@ def find_last_patch_parent(develop_name, branch_name):
         # Get the hash of the second most recent merge.
         return lines[1].split(' ')[0]
 
-def get_feature_ancestor(feature):
+def get_feature_ancestor(feature, upstream):
     repo = _gitflow.repo
-    develop = _gitflow.develop_name()
 
     # Check if we are not looking for the ancestor of the same commit.
     # If that is the case, the algorithm used further fails.
     fc = repo.commit(feature)
-    dc = repo.commit(develop)
-    if fc == dc:
+    uc = repo.commit(upstream)
+    if fc == uc:
         raise EmptyDiff('{0} and {1} are pointing to the same commit.' \
-                .format(develop, feature))
+                .format(upstream, feature))
 
     # Get all commits being a part of the respective branches.
-    develop_ancestors = sub.check_output(
-            ['git', 'rev-list', '--first-parent', develop])
+    upstream_ancestors = sub.check_output(
+            ['git', 'rev-list', '--first-parent', upstream])
     feature_ancestors = sub.check_output(
             ['git', 'rev-list', '--first-parent', feature])
 
     # Compute the diff between the lists.
     ancestor_diff = diff.unified_diff(
-            develop_ancestors.split('\n'), feature_ancestors.split('\n'))
+            upstream_ancestors.split('\n'), feature_ancestors.split('\n'))
 
     ancestor = None
     # The first line to match this is the ancestor we are looking for.
@@ -286,7 +285,7 @@ def get_feature_ancestor(feature):
     # but that is already being taken care of at the beginning of the function.
     if ancestor is None:
         raise AncestorNotFound('No common ancestor of {0} and {1} found.' \
-                .format(develop, feature))
+                .format(upstream, feature))
 
     # Just to be sure, explode as soon as possible.
     assert ancestor

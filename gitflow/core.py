@@ -5,11 +5,12 @@
 # Distributed under a BSD-like license. For full terms see the file LICENSE.txt
 #
 
+import ConfigParser
+import datetime
 import os
 import sys
 import time
-import datetime
-import ConfigParser
+import traceback
 from functools import wraps
 
 import git
@@ -292,9 +293,54 @@ Git config '%s' missing, please fill it in by executing
     @requires_repo
     def require_remote(self, name):
         try:
-            return self.repo.remotes[name]
+            remote = self.repo.remotes[name]
         except IndexError:
             raise NoSuchRemoteError("Remote '{0}' was not found.".format(name))
+
+        # Monkey patch remote.fetch to fix a false negative assertion in GitPython.
+        class RemoteWrapper(object):
+            def __init__(self, remote):
+                self._remote = remote
+
+            def __str__(self):
+                return self._remote.__str__()
+
+            def __repr__(self):
+                return self._remote.__repr__()
+
+            def __eq__(self, other):
+                return self._remote.__eq__(other)
+
+            def __ne__(self, other):
+                return self._remote.__ne__(other)
+
+            def __hash__(self):
+                return self._remote.__hash__()
+
+            # For some reason __getattribute__ is making infinite recursion,
+            # so let's use __getattr__.
+            def __getattr__(self, name):
+                return self._remote.__getattribute__(name)
+
+            # This is the main monkey patching part.
+            def fetch(self, refspec=None, progress=None, **kwargs):
+                # Let's try 3 times...
+                err = None
+                for x in range(3):
+                    try:
+                        return self._remote.fetch(refspec=refspec,
+                                progress=progress, **kwargs)
+                    except AssertionError as e:
+                        err = e
+                        # If we are in '_get_fetch_info_from_stderr',
+                        # it's the broken assertion and we skip it.
+                        func_name = traceback.extract_stack()[-1].frame[2]
+                        if func_name != '_get_fetch_info_from_stderr':
+                            raise e
+                # If we somehow get the same exception 3 times, just raise anyway.
+                raise err
+
+        return RemoteWrapper(remote)
 
     def origin(self):
         return self.require_remote(self.origin_name())
@@ -676,6 +722,7 @@ Git config '%s' missing, please fill it in by executing
         try:
             branch = mgr.by_name_prefix(name, remote=True)
             self.git.checkout(branch.name[len(self.origin_name())+1:])
+            err = None
         except NoSuchBranchError as ex:
             if err is None:
                 err = ex
