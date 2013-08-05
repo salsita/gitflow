@@ -134,6 +134,10 @@ class Story(object):
         assert self.is_feature() or self.is_bug()
         return self.get_state() == 'delivered'
 
+    def is_accepted(self):
+        assert self.is_feature() or self.is_bug()
+        return self.get_state() == 'accepted'
+
     def is_rejected(self):
         assert self.is_feature() or self.is_bug()
         return self.get_state() == 'rejected'
@@ -254,6 +258,16 @@ class Release(object):
             if story.is_labeled('point me'):
                 err = True
                 print "    Story labeled 'point me': " + story.get_url()
+        if err:
+            raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
+
+    def try_release(self):
+        self.try_deliver()
+        err = False
+        for story in self:
+            if not story.is_accepted():
+                err = True
+                print('    Story not accepted: ' + story.get_url())
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 

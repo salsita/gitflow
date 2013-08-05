@@ -195,7 +195,7 @@ class Release(object):
                     ' aborting...')
 
     def submit(self):
-        assert self._reviews
+        assert self._reviews is not None
         for review in self._reviews:
             review.submit()
 
