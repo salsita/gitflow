@@ -240,8 +240,11 @@ class Release(object):
     def try_deliver(self):
         err = False
         for story in self.iter_stories():
-            if not story.is_labeled('qa+') \
-                    and not (story.is_feature() and story.get_estimate() > 0):
+            if not story.is_labeled('qa+'):
+                # Allow zero-point stories not to be QA'd since they are
+                # by definition refactoring stories.
+                if story.is_feature() and story.get_estimate() == 0:
+                    continue
                 err = True
                 print "    Story not QA'd: " + story.get_url()
             if story.is_labeled('point me'):
@@ -482,13 +485,15 @@ def colorize_string(string):
         tmp = tmp.replace(bold, stripped_asterisks)
     return tmp
 
-def get_story_id_from_branch_name(branch_name):
-    match = re.match('^.+/([0-9]+)[/-]?.*$', branch_name)
+
+def get_story_id_from_branch_name(identifier, branch_name):
+    if branch_name.startswith(identifier):
+        name = branch_name[len(identifier)+1:]
+    else:
+        name = branch_name
+    match = re.match('^([0-9]+)[/-]?.*$', name)
     if not match:
-        # Gitflow identifier has already been stripped.
-        match = re.match('^([0-9]+)[/-]?.*$', branch_name)
-        if not match:
-            raise GitflowError('Weird branch name format: %s' % branch_name)
+        raise GitflowError('Weird branch name format: %s' % branch_name)
     return match.groups()[0]
 
 

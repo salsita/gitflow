@@ -260,7 +260,7 @@ class FeatureCommand(GitFlowCommand):
 
         #+++ PT story stuff
         sys.stdout.write('Getting data from Pivotal Tracker ... ')
-        story_id = pivotal.get_story_id_from_branch_name(name)
+        story_id = pivotal.get_story_id_from_branch_name('feature', name)
         story = pivotal.Story(story_id)
         release = story.get_release()
         print 'OK'
@@ -277,7 +277,7 @@ class FeatureCommand(GitFlowCommand):
 
         # Fail as soon as possible if something is not right so that we don't
         # get Pivotal Tracker into an inconsistent state.
-        rev_range = [get_feature_ancestor(full_name),
+        rev_range = [get_feature_ancestor(full_name, upstream),
                      repo.commit(full_name).hexsha]
 
         #+++ Git manipulation
@@ -663,7 +663,7 @@ class ReleaseCommand(GitFlowCommand):
         print 'OK'
 
         #+++ Submit all relevant review requests
-        # This is happening only after the branches are successfully merges so
+        # This is happening only after the branches are successfully merged so
         # that we don't end up in an inconsistent state.
         sys.stdout.write('Submitting all relevant review requests found ... ')
         for r in reviews:
