@@ -171,17 +171,32 @@ a more complete list. The best documentation is, however,::
       git flow feature publish <name>
       git flow feature pull <remote> <name>
 
-* To list/start/finish release branches, use::
+* To list/start/deploy/finish release branches, use::
   
       git flow release
-      git flow release start <major.minor.release> [<base>]
+      git flow release start [-D|--no-deploy] <major.minor.release> [<base>]
       git flow release finish [-R|--ignore-missing-reviews] [<major.minor.release>]
+      git flow release deploy <major.minor.release> {qa|client|production}
   
-  If you are not using Review Board for your project, you can use
-  ``-R`` or ``--ignore-missing-reviews`` to skip the reviews check while doing
-  a release.
+  ``release start`` will by default access Jenkins and it will trigger the
+  deployment job paired with your project. No need to set up any git config
+  manually, you will be prompted at run time.
 
-* To list/start/finish hotfix branches (not supported by Salsita), use::
+  If the Jenkins deployment job or the QA environment for your project is
+  not ready or is not being used, you can use ``-D`` or ``--no-deploy`` to tell
+  ``release start`` not to access Jenkins at all.
+
+  For ``release finish``, if you are not using Review Board for your project,
+  you can use ``-R`` or ``--ignore-missing-reviews`` to skip the reviews check
+  while doing a release.
+
+  ``release deploy`` is usually used together with other release commands and
+  there is no need to run it manually. But if there is a situation when you need
+  to deploy a release branch manually, you can do so with ``release deploy``.
+  You just have to specify the version and the environmen you want to use and
+  the appropriate Jenkins job will be triggered for you.
+
+ * To list/start/finish hotfix branches (not supported by Salsita), use::
   
       git flow hotfix
       git flow hotfix start <release> [<base>]
