@@ -460,7 +460,6 @@ class ReleaseCommand(GitFlowCommand):
         cls.register_start(sub)
         cls.register_deploy(sub)
         cls.register_finish(sub)
-        cls.register_publish(sub)
         cls.register_track(sub)
 
     #- list
@@ -779,26 +778,52 @@ class ReleaseCommand(GitFlowCommand):
         #+++ Deliver all relevant stories in Pivotal Tracker
         release.deliver()
 
-    #- publish
+    #- deploy
     @classmethod
-    def register_publish(cls, parent):
-        p = parent.add_parser('publish',
-                help='Publish this release branch to origin.')
-        p.set_defaults(func=cls.run_publish)
-        p.add_argument('version', nargs='?')
+    def register_deploy(cls, parent):
+        p = parent.add_parser('deploy', help='Deploy a release branch.')
+        p.set_defaults(func=cls.run_deploy)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('version', nargs='?', help='Release version to deploy.')
+        p.add_argument('environ', action=NotEmpty, metavar='ENV',
+                help="Environment to deploy into. " \
+                     "ENV must be in {qa, client, production}")
 
     @staticmethod
-    def run_publish(args):
+    def run_deploy(args):
+        assert args.environ
         gitflow = GitFlow()
-        version = gitflow.name_or_current('release', args.version)
-        gitflow.start_transaction('publishing release branch %s' % version)
-        branch = gitflow.publish('release', version)
-        print
-        print "Summary of actions:"
-        print "- A new remote branch '%s' was created" % branch
-        print "- The local branch '%s' was configured to track the remote branch" % branch
-        print "- You are now on branch '%s'" % branch
-        print
+
+        # Fetch remote refs.
+        sys.stderr.write('Fetching origin ... ')
+        if args.no_fetch:
+            print('SKIP')
+        else:
+            gitflow.origin().fetch()
+            print('OK')
+
+        branch = None
+        # Make sure that the remote branch exists in origin.
+        if args.version:
+            pivotal.check_version_format(args.version)
+            branch_name = gitflow.managers['release'].full_name(args.version)
+        else:
+            branch_name = gitflow.master_name()
+        sys.stderr.write('Checking if origin branch {0} exists ... '.format(branch_name))
+        branch = gitflow.require_origin_branch(branch_name)
+        print('OK')
+
+        # Trigger the job.
+        jenkins = Jenkins.from_prompt()
+        print('Triggering the deployment job ... job {0} ... ' \
+                .format(jenkins.get_deploy_job_name()))
+        cause = 'Trigger by ' + gitflow.get('user.name') + \
+            ' using the GitFlow plugin'
+        url = jenkins.get_url_for_next_invocation()
+        invocation = jenkins.trigger_deploy_job(branch, args.environ, cause)
+        print('The job has been enqueued. You can visit\n\n\t{0}\n\n' \
+                'to see the progress.'.format(url))
 
     #- track
     @classmethod
