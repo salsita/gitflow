@@ -20,17 +20,18 @@ import gitflow as distmeta
 long_description = codecs.open('README.rst', "r", "utf-8").read()
 
 install_requires = [
-    'GitPython>=0.3.2c1',
     'argparse',
-    'setuptools',
-    'xmlbuilder',
-    'python-dateutil',
-    'poster',
-    'simplejson',
-    'httplib2',
     'colorama',
+    'gitdb>=0.5.1',
+    'GitPython>=0.3.2c1',
+    'httplib2',
+    'jenkinsapi',
+    'poster',
+    'python-dateutil',
     'rbtools',
-    'gitdb>=0.5.1'
+    'setuptools',
+    'simplejson',
+    'xmlbuilder'
 ]
 
 setup(

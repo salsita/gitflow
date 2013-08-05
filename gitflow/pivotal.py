@@ -15,14 +15,19 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 
 _gitflow = GitFlow()
 
+def check_version_format(version):
+    matcher = _get_version_matcher()
+    if not re.match(matcher + '$', version):
+        raise IllegalVersionFormat(matcher)
+
+def _get_version_matcher():
+    return _gitflow._safe_get('gitflow.release.versionmatcher')
+
 def _get_client():
     return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))
 
 def _get_project_id():
     return _gitflow._safe_get('gitflow.pt.projectid')
-
-def _get_version_matcher():
-    return _gitflow._safe_get('gitflow.release.versionmatcher')
 
 def _iter_current_stories():
     client = _get_client()
@@ -51,15 +56,9 @@ def _iter_backlog_stories():
 def _iter_stories():
     return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
 
-def _check_version_format(version):
-    matcher = _get_version_matcher()
-    if not re.match(matcher + '$', version):
-        raise IllegalVersionFormat(matcher)
-
 def list_projects():
     projects = _get_client().projects.all()['projects']
     return [(p['id'], p['name']) for p in projects]
-
 
 class Story(object):
     def __init__(self, story_id, _skip_story_download=False):
@@ -148,7 +147,7 @@ class Story(object):
 
     def assign_to_release(self, release):
         assert self.is_feature() or self.is_bug()
-        _check_version_format(release)
+        check_version_format(release)
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
         self.add_label('release-' + release)
@@ -223,7 +222,7 @@ class Story(object):
 
 class Release(object):
     def __init__(self, version, _skip_story_download=False):
-        _check_version_format(version)
+        check_version_format(version)
         self._version = version
         if _skip_story_download:
             return

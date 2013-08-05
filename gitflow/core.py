@@ -342,6 +342,18 @@ Git config '%s' missing, please fill it in by executing
 
         return RemoteWrapper(remote)
 
+    @requires_repo
+    def require_origin_branch(self, branch_name):
+        origin_name = self.origin_name(branch_name)
+        refs = [r
+                for r in self.repo.refs
+                if isinstance(r, RemoteReference) and r.name == origin_name]
+        if len(refs) != 0:
+            assert len(refs) == 1
+            return refs[0]
+        raise NoSuchBranchError(
+                "Remote branch '{0}' was not found".format(origin_name))
+
     def origin(self):
         return self.require_remote(self.origin_name())
 
