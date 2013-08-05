@@ -5,12 +5,16 @@ import urlparse
 
 from .core import GitFlow, requires_initialized
 from .prompt import ask, pick
-from .exceptions import ObjectError
+from .exceptions import (ObjectError, GitflowError)
 
 
 class DeployJobNotFoundError(ObjectError):
     def __str__(self):
         return 'Jenkins job {0} not found'.format(self.args[0])
+
+class DeploymentRequestError(GitflowError):
+    def __str__(self):
+        return "You cannot deploy branch {0[0]} into the {0[1]} environment"
 
 class Jenkins(object):
     def __init__(self, username, password):
@@ -21,12 +25,13 @@ class Jenkins(object):
                 username, password)
 
     def trigger_deploy_job(self, branch, environment, cause=None):
-        assert branch == self._G.develop_name() \
+        if not (branch == self._G.develop_name() \
                     and environment == 'dev' \
                 or branch in self._G.managers['release'].iter(remote=True) \
                     and environment in ('qa', 'client') \
                 or branch == self._G.master_name() \
-                    and environment == 'production'
+                    and environment == 'production'):
+            raise DeploymentRequestError(branch, environment)
 
         params = {'branch': branch.name, 'environment': environment}
         return self._get_deploy_job().invoke(

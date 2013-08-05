@@ -61,6 +61,6 @@ def pick(option, title, source):
             continue
         if a >= 1 and a <= i:
             answer = suggestions[a-1][0]
-    
+
     gitflow.set(option, answer.replace('-', MAGIC_STRING))
     return answer

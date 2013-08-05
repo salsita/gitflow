@@ -16,9 +16,12 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 _gitflow = GitFlow()
 
 def check_version_format(version):
-    matcher = _gitflow._safe_get('gitflow.release.versionmatcher')
+    matcher = _get_version_matcher()
     if not re.match(matcher + '$', version):
         raise IllegalVersionFormat(matcher)
+
+def _get_version_matcher():
+    return _gitflow._safe_get('gitflow.release.versionmatcher')
 
 def _get_client():
     return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))

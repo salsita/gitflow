@@ -504,6 +504,8 @@ class ReleaseCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_start)
         p.add_argument('-F', '--fetch', action='store_true',
                 help='Fetch from origin before performing local operation.')
+        p.add_argument('-D', '--no-deploy', action='store_true',
+                help='Do not deploy to the QA environment upon release start.')
         p.add_argument('version', action=NotEmpty)
 
     @staticmethod
@@ -567,6 +569,13 @@ class ReleaseCommand(GitFlowCommand):
         release.start()
         gitflow.checkout('release', release.get_version())
 
+        #+ Deploy to the QA environment.
+        if not args.no_deploy:
+            # args.version is already set, set args.environ as well.
+            args.environ = 'qa'
+            args.no_fetch = True
+            ReleaseCommand.run_deploy(args)
+
         print
         print "Follow-up actions:"
         print "- Bump the version number now!"
@@ -581,6 +590,8 @@ class ReleaseCommand(GitFlowCommand):
     def register_deploy(cls, parent):
         p = parent.add_parser('deploy', help='Deploy a release branch.')
         p.set_defaults(func=cls.run_deploy)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
         p.add_argument('version', action=NotEmpty, help='Release version to deploy.')
         p.add_argument('environ', action=NotEmpty, metavar='ENV',
                 help="Environment to deploy into. " \
@@ -595,8 +606,11 @@ class ReleaseCommand(GitFlowCommand):
 
         # Fetch remote refs.
         sys.stderr.write('Fetching origin ... ')
-        gitflow.origin().fetch()
-        print('OK')
+        if args.no_fetch:
+            print('SKIP')
+        else:
+            gitflow.origin().fetch()
+            print('OK')
 
         # Make sure that the release branch exists in origin.
         branch_name = gitflow.managers['release'].full_name(args.version)
