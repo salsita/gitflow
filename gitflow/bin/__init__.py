@@ -35,6 +35,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 IllegalVersionFormat, InconsistencyDetected,
                                 PointMeError)
 import gitflow.pivotal as pivotal
+import gitflow.review as review
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
 
@@ -458,6 +459,7 @@ class ReleaseCommand(GitFlowCommand):
         cls.register_list(sub)
         cls.register_list_stories(sub)
         cls.register_start(sub)
+        cls.register_deploy_client(sub)
         cls.register_deploy(sub)
         cls.register_finish(sub)
         cls.register_publish(sub)
@@ -502,8 +504,8 @@ class ReleaseCommand(GitFlowCommand):
     def register_start(cls, parent):
         p = parent.add_parser('start', help='Start a new release branch.')
         p.set_defaults(func=cls.run_start)
-        p.add_argument('-F', '--fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
         p.add_argument('-D', '--no-deploy', action='store_true',
                 help='Do not deploy to the QA environment upon release start.')
         p.add_argument('version', action=NotEmpty)
@@ -518,7 +520,7 @@ class ReleaseCommand(GitFlowCommand):
         any_assigned = False
         print
         print 'Stories already assigned to this release:'
-        for story in release.iter_stories():
+        for story in release:
             sys.stdout.write('    ')
             story.dump()
             any_assigned = True
@@ -556,7 +558,7 @@ class ReleaseCommand(GitFlowCommand):
                          % base)
         try:
             branch = gitflow.create('release', args.version, base,
-                                    fetch=args.fetch)
+                                    fetch=(not args.no_fetch))
         except BranchExistsError:
             sys.stdout.write('branch already exists ... ')
         except (NotInitialized, BranchTypeExistsError, BaseNotOnBranch):
@@ -573,7 +575,6 @@ class ReleaseCommand(GitFlowCommand):
         if not args.no_deploy:
             # args.version is already set, set args.environ as well.
             args.environ = 'qa'
-            args.no_fetch = True
             ReleaseCommand.run_deploy(args)
 
         print
@@ -584,6 +585,40 @@ class ReleaseCommand(GitFlowCommand):
         print
         print "     git flow release finish", args.version
         print
+
+    #- deploy_client
+    @classmethod
+    def register_deploy_client(cls, parent):
+        p = parent.add_parser('deploy_client',
+                help='Deploy a release branch to client staging.')
+        p.set_defaults(func=cls.run_deploy_client)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
+        p.add_argument('version', action=NotEmpty, help='Release to deploy.')
+
+    @staticmethod
+    def run_deploy_client(args):
+        assert args.version
+        pivotal.check_version_format(args.version)
+
+        #+++ Check QA
+        pt_release = pivotal.Release(args.version)
+        print('Checking Pivotal Tracker stories ... ')
+        pt_release.try_deliver()
+        print('OK')
+
+        #+++ Check all relevant review requests in Review Board
+        rb_release = review.Release(pt_release)
+        print('Checking if all relevant stories have been reviewed ... ')
+        rb_release.try_submit(args.ignore_missing_reviews)
+        print('OK')
+
+        args.environ = 'client'
+        ReleaseCommand.run_deploy(args)
 
     #- deploy
     @classmethod
@@ -683,7 +718,7 @@ class ReleaseCommand(GitFlowCommand):
         reviews_expected = 0
         err = None
         print('Checking if all relevant stories have been reviewed ... ')
-        for story in release.iter_stories():
+        for story in release:
             prefix = feature_prefix + str(story.get_id())
             try:
                 reviews_expected += 1
