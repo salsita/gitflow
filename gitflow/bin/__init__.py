@@ -459,10 +459,10 @@ class ReleaseCommand(GitFlowCommand):
         cls.register_list(sub)
         cls.register_list_stories(sub)
         cls.register_start(sub)
-        cls.register_deploy_client(sub)
-        cls.register_deploy(sub)
         cls.register_finish(sub)
-        cls.register_publish(sub)
+        cls.register_deploy(sub)
+        cls.register_deploy_client(sub)
+        cls.register_deploy_production(sub)
         cls.register_track(sub)
 
     #- list
@@ -586,84 +586,6 @@ class ReleaseCommand(GitFlowCommand):
         print "     git flow release finish", args.version
         print
 
-    #- deploy_client
-    @classmethod
-    def register_deploy_client(cls, parent):
-        p = parent.add_parser('deploy_client',
-                help='Deploy a release branch to client staging.')
-        p.set_defaults(func=cls.run_deploy_client)
-        p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Do not fetch from origin before performing local operation.')
-        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
-                       help='Just print a warning if there is no review for '
-                            'a feature branch that is assigned to this release,'
-                            ' do not fail.')
-        p.add_argument('version', action=NotEmpty, help='Release to deploy.')
-
-    @staticmethod
-    def run_deploy_client(args):
-        assert args.version
-        pivotal.check_version_format(args.version)
-
-        #+++ Check QA
-        pt_release = pivotal.Release(args.version)
-        print('Checking Pivotal Tracker stories ... ')
-        pt_release.try_deliver()
-        print('OK')
-
-        #+++ Check all relevant review requests in Review Board
-        rb_release = review.Release(pt_release)
-        print('Checking if all relevant stories have been reviewed ... ')
-        rb_release.try_submit(args.ignore_missing_reviews)
-        print('OK')
-
-        args.environ = 'client'
-        ReleaseCommand.run_deploy(args)
-
-    #- deploy
-    @classmethod
-    def register_deploy(cls, parent):
-        p = parent.add_parser('deploy', help='Deploy a release branch.')
-        p.set_defaults(func=cls.run_deploy)
-        p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Do not fetch from origin before performing local operation.')
-        p.add_argument('version', action=NotEmpty, help='Release version to deploy.')
-        p.add_argument('environ', action=NotEmpty, metavar='ENV',
-                help="Environment to deploy into. " \
-                     "ENV must be in {qa, client, production}")
-
-    @staticmethod
-    def run_deploy(args):
-        assert args.version
-        assert args.environ
-        gitflow = GitFlow()
-        pivotal.check_version_format(args.version)
-
-        # Fetch remote refs.
-        sys.stderr.write('Fetching origin ... ')
-        if args.no_fetch:
-            print('SKIP')
-        else:
-            gitflow.origin().fetch()
-            print('OK')
-
-        # Make sure that the release branch exists in origin.
-        branch_name = gitflow.managers['release'].full_name(args.version)
-        sys.stderr.write('Checking if origin branch {0} exists ... '.format(branch_name))
-        branch = gitflow.require_origin_branch(branch_name)
-        print('OK')
-
-        # Trigger the job.
-        jenkins = Jenkins.from_prompt()
-        print('Triggering the deploy job ... job {0} ... ' \
-                .format(jenkins.get_deploy_job_name()))
-        cause = 'Trigger by ' + gitflow.get('user.name') + \
-            ' using the GitFlow plugin'
-        url = jenkins.get_url_for_next_invocation()
-        invocation = jenkins.trigger_deploy_job(branch, args.environ, cause)
-        print('The job has been enqueued. You can visit\n\n\t{0}\n\n' \
-                'to see the progress.'.format(url))
-
     #- finish
     @classmethod
     def register_finish(cls, parent):
@@ -671,7 +593,9 @@ class ReleaseCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_finish)
         # fetch by default
         p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-D', '--no-deploy', action='store_true',
+                help='Do not deploy to the production environment upon release finish.')
         # push by default
         p.add_argument('-P', '--no-push', action='store_true',
                        #:todo: get "origin" from config
@@ -702,40 +626,16 @@ class ReleaseCommand(GitFlowCommand):
         origin  = gitflow.origin()
         version = gitflow.name_or_current('release', args.version)
 
-        #+++ Check QA
-        release = pivotal.Release(version)
-        print "Checking Pivotal Tracker stories ... "
-        try:
-            release.try_deliver()
-        except GitflowError:
-            raise SystemExit('FAIL')
-        print 'OK'
+        #+++ Check if all stories were accepted by the client
+        pt_release = pivotal.Release(args.version)
+        print('Checking Pivotal Tracker stories ... ')
+        pt_release.try_release()
+        print('OK')
 
-        #+++ Check all relevant review requests in Review Board
-        feature_prefix = gitflow.get_prefix('feature')
-
-        reviews = list()
-        reviews_expected = 0
-        err = None
+        #+++ Check all relevant review requests in Review Board, to be sure
+        rb_release = review.Release(pt_release)
         print('Checking if all relevant stories have been reviewed ... ')
-        for story in release:
-            prefix = feature_prefix + str(story.get_id())
-            try:
-                reviews_expected += 1
-                r = BranchReview.from_prefix(prefix)
-                r.verify_submit()
-                print('    ' + str(r.get_id()))
-                reviews.append(r)
-            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
-                print('    ' + str(e))
-            except Exception as e:
-                print('    ' + str(e))
-                err = e
-        if err is not None:
-            raise SystemExit('An error detected, aborting...')
-        if not args.ignore_missing_reviews and len(reviews) != reviews_expected:
-            raise SystemExit('Some stories have not been reviewed yet,' \
-                    ' aborting...')
+        rb_release.try_submit(args.ignore_missing_reviews)
         print('OK')
 
         #+++ Merge release branch into develop and master
@@ -750,14 +650,13 @@ class ReleaseCommand(GitFlowCommand):
                                  fetch=(not args.no_fetch), rebase=False,
                                  keep=args.keep, force_delete=False,
                                  tagging_info=tagging_info, push=(not args.no_push))
-        print 'OK'
+        print('OK')
 
         #+++ Submit all relevant review requests
         # This is happening only after the branches are successfully merged so
         # that we don't end up in an inconsistent state.
         sys.stdout.write('Submitting all relevant review requests found ... ')
-        for r in reviews:
-            r.submit()
+        rb_release.submit()
         print('OK')
 
         #+++ Collect local and remote branches to be deleted
@@ -770,7 +669,7 @@ class ReleaseCommand(GitFlowCommand):
         feature_prefix = gitflow.get_prefix('feature')
         # refs = [<type>/<id>/...]
         refs = [str(ref)[len(origin_prefix):] for ref in origin.refs]
-        for story in release.iter_stories():
+        for story in pt_release:
             # prefix = <feature-prefix>/<id>
             prefix = feature_prefix + str(story.get_id())
             try:
@@ -811,8 +710,10 @@ class ReleaseCommand(GitFlowCommand):
         git.push(str(origin), *refspecs)
         print '    OK'
 
-        #+++ Deliver all relevant stories in Pivotal Tracker
-        release.deliver()
+        #+++ Trigger the deploy job
+        if not args.no_deploy:
+            args.environ = 'production'
+            ReleaseCommand.run_deploy(args)
 
     #- publish
     @classmethod
@@ -842,6 +743,54 @@ class ReleaseCommand(GitFlowCommand):
                 help='Track a release branch from origin.')
         p.set_defaults(func=cls.run_track)
         p.add_argument('version', action=NotEmpty)
+
+
+    #- deploy_client
+    @classmethod
+    def register_deploy_client(cls, parent):
+        p = parent.add_parser('deploy_client',
+                help='Deploy a release branch to client staging.')
+        p.set_defaults(func=cls.run_deploy_client)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
+        p.add_argument('version', action=NotEmpty, help='Release to deploy.')
+
+    @staticmethod
+    def run_deploy_client(args):
+        assert args.version
+
+        #+++ Check QA
+        pt_release = pivotal.Release(args.version)
+        print('Checking Pivotal Tracker stories ... ')
+        pt_release.try_deliver()
+        print('OK')
+
+        #+++ Check all relevant review requests in Review Board
+        rb_release = review.Release(pt_release)
+        print('Checking if all relevant stories have been reviewed ... ')
+        rb_release.try_submit(args.ignore_missing_reviews)
+        print('OK')
+
+        args.environ = 'client'
+        ReleaseCommand.run_deploy(args)
+
+    #- deploy_production
+    @classmethod
+    def register_deploy_production(cls, parent):
+        p = parent.add_parser('deploy_production',
+                help='Deploy the master branch into production.')
+        p.set_defaults(func=cls.run_deploy_client)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+
+    @staticmethod
+    def run_deploy_production(args):
+        args.environ = 'production'
+        ReleaseCommand.run_deploy(args)
 
     @staticmethod
     def run_track(args):
