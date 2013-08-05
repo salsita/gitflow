@@ -260,7 +260,7 @@ class FeatureCommand(GitFlowCommand):
 
         #+++ PT story stuff
         sys.stdout.write('Getting data from Pivotal Tracker ... ')
-        story_id = pivotal.get_story_id_from_branch_name(name)
+        story_id = pivotal.get_story_id_from_branch_name('feature', name)
         story = pivotal.Story(story_id)
         release = story.get_release()
         print 'OK'
