@@ -14,7 +14,8 @@ class DeployJobNotFoundError(ObjectError):
 
 class DeploymentRequestError(GitflowError):
     def __str__(self):
-        return "You cannot deploy branch {0[0]} into the {0[1]} environment"
+        return "You cannot deploy branch {0[0]} into the {0[1]} environment" \
+                .format(self.args)
 
 class Jenkins(object):
     def __init__(self, username, password):
@@ -25,15 +26,7 @@ class Jenkins(object):
                 username, password)
 
     def trigger_deploy_job(self, branch, environment, cause=None):
-        if not (branch == self._G.develop_name() \
-                    and environment == 'dev' \
-                or branch in self._G.managers['release'].iter(remote=True) \
-                    and environment in ('qa', 'client') \
-                or branch == self._G.master_name() \
-                    and environment == 'production'):
-            raise DeploymentRequestError(branch, environment)
-
-        params = {'branch': branch.name, 'environment': environment}
+        params = {'branch': branch, 'environment': environment}
         return self._get_deploy_job().invoke(
                 securitytoken=self._get_deploy_job_token(),
                 build_params=params, cause=cause)
