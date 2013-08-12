@@ -52,8 +52,12 @@ class BranchReview(object):
 
     def __getattr__(self, name):
         if name == '_rid':
-            self._rid = self._branch_to_rid(self._branch)
+            self._update_from_existing_review()
             return self._rid
+        if name == '_summary':
+            return None
+        if name == '_description':
+            return None
         raise AttributeError
 
     def get_id(self):
@@ -68,16 +72,47 @@ class BranchReview(object):
         else:
             raise AttributeError('Neither review id nor review url is defined.')
 
-    def post(self, summary=None, desc=None):
+    def post(self, story):
         assert self._rev_range
         cmd = ['rbt', 'post',
                '--branch', self._branch,
                '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
-        if summary is None or desc is None:
-            cmd.append('--guess-fields')
-        else:
-            cmd.append('--summary=' + str(summary))
-            cmd.append('--description=' + str(desc))
+
+        self._check_for_existing_review()
+
+        desc_cmd = ['git', 'log',
+                    "--pretty="
+                        "--------------------%n"
+                        "Author:    %an <%ae>%n"
+                        "Committer: %cn <%ce>%n"
+                        "%n"
+                        "%s%n%n"
+                        "%b",
+                    '{0[0]}...{0[1]}'.format(self._rev_range)]
+        desc = '> Story being reviewed: {0}\n'.format(story.get_url()) + \
+               '\n' \
+               'COMMIT LOG\n' \
+                + sub.check_output(desc_cmd)
+        # 7 is the magical offset to get the first commit subject
+        summary = desc.split('\n')[7]
+
+        # If we are updating an existing review, reuse its summary.
+        if self._summary is not None:
+            summary = self._summary
+
+        cmd.append('--summary=' + str(summary))
+
+        # If we are updating an existing review, reuse part of its description.
+        if self._description is not None:
+            lines = self._description.split('\n')
+            merged_desc = []
+            for line in lines:
+                if line.startswith('> Story being reviewed'):
+                    break
+                merged_desc.append(line)
+            desc = '\n'.join(merged_desc) + '\n' + desc
+
+        cmd.append('--description=' + str(desc))
 
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
@@ -135,7 +170,14 @@ class BranchReview(object):
         if len(reviews) > 1:
             raise MultipleReviewRequestsForBranch(self._branch)
         elif len(reviews) == 1:
-            return reviews[0]['id']
+            r = reviews[0]
+            self._summary = r['summary']
+            self._description = r['description']
+            return r['id']
+
+    def _check_for_existing_review(self):
+        assert self._branch
+        self._rid = self._branch_to_rid(self._branch)
 
     @classmethod
     def from_prefix(cls, prefix):
