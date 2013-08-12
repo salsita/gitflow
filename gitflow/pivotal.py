@@ -245,7 +245,7 @@ class Release(object):
         for story in self.iter_candidates():
             story.assign_to_release(self._version)
 
-    def try_deliver(self):
+    def try_finish(self):
         err = False
         for story in self:
             if not story.is_labeled('qa+'):
@@ -261,8 +261,16 @@ class Release(object):
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
-    def try_release(self):
-        self.try_deliver()
+    def finish(self):
+        print 'Following stories were delivered to the client %s:' \
+              % self._version
+        for story in self:
+            story.deliver()
+            sys.stdout.write('    ')
+            story.dump()
+
+    def try_deliver(self):
+        self.try_finish()
         err = False
         for story in self:
             if not story.is_accepted():
@@ -270,14 +278,6 @@ class Release(object):
                 print('    Story not accepted: ' + story.get_url())
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
-
-    def deliver(self):
-        print 'Following stories were delivered as of release %s:' \
-              % self._version
-        for story in self:
-            story.deliver()
-            sys.stdout.write('    ')
-            story.dump()
 
     def prompt_for_confirmation(self):
         answer = raw_input("Do you wish to start the release? [y/N]: ")
