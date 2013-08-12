@@ -105,12 +105,12 @@ class BranchReview(object):
         # If we are updating an existing review, reuse part of its description.
         if self._description is not None:
             lines = self._description.split('\n')
-            merged_desc = []
+            kept_desc = []
             for line in lines:
                 if line.startswith('> Story being reviewed'):
                     break
-                merged_desc.append(line)
-            desc = '\n'.join(merged_desc) + '\n' + desc
+                kept_desc.append(line)
+            desc = '\n'.join(kept_desc) + '\n' + desc
 
         cmd.append('--description=' + str(desc))
 
