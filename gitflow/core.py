@@ -334,7 +334,7 @@ Git config '%s' missing, please fill it in by executing
                         err = e
                         # If we are in '_get_fetch_info_from_stderr',
                         # it's the broken assertion and we skip it.
-                        func_name = traceback.extract_stack()[-1].frame[2]
+                        func_name = traceback.extract_stack()[-1][2]
                         if func_name != '_get_fetch_info_from_stderr':
                             raise e
                 # If we somehow get the same exception 3 times, just raise anyway.
