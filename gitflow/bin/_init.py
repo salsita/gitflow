@@ -20,7 +20,7 @@ except:
     pass
 
 from gitflow.core import GitFlow as CoreGitFlow, warn, info
-from gitflow.util import pick
+from gitflow.prompt import pick
 
 from gitflow.exceptions import (AlreadyInitialized, NotInitialized,
                                 NoSuchLocalBranchError, NoSuchBranchError,
