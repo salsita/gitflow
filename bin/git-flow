@@ -51,8 +51,8 @@ except ImportError:
     sys.stderr.write("Could not find the gitflow classes. Did you install gitflow?\n")
     sys.stderr.write("To install, use one of these commands:\n")
     sys.stderr.write("\n")
-    sys.stderr.write("    - pip install gitflow     (requires pip)\n")
-    sys.stderr.write("    - easy_install gitflow    (requires setuptools)\n")
+    sys.stderr.write("    - pip install salsita-gitflow     (requires pip)\n")
+    sys.stderr.write("    - easy_install salsita-gitflow    (requires setuptools)\n")
     sys.stderr.write("    - cd /path/to/gitflow && python setup.py install\n")
     sys.stderr.write("\n")
 except (GitflowError, GitCommandError), e:
