@@ -164,6 +164,8 @@ class FeatureCommand(GitFlowCommand):
 
     @staticmethod
     def run_start(args):
+        if args.for_release:
+            pivotal.check_version_format(args.for_release)
         gitflow = GitFlow()
 
         if args.for_release is not None:
@@ -303,28 +305,14 @@ class FeatureCommand(GitFlowCommand):
         #+++ Review Request
         if not args.no_review:
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
-            desc_cmd = ['git', 'log',
-                        "--pretty="
-                            "--------------------%n"
-                            "Author:    %an <%ae>%n"
-                            "Committer: %cn <%ce>%n"
-                            "%n"
-                            "%s%n%n"
-                            "%b",
-                        '{0[0]}...{0[1]}'.format(rev_range)]
-            desc = '> Story being reviewed: {0}\n'.format(story.get_url()) + \
-                   '\n' \
-                   'COMMIT LOG\n' \
-                    + sub.check_output(desc_cmd)
-            # 7 is the magical offset to get the first commit subject
-            summary = desc.split('\n')[7]
             review = BranchReview.from_identifier('feature', name, rev_range)
-            review.post(summary, desc)
+            review.post(story)
+            print('OK')
 
             sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
             comment = 'New patch was uploaded into Review Board: ' + review.get_url()
             story.add_comment(comment)
-            print 'OK'
+            print('OK')
 
         #+++ Git modify merge message
         #sys.stdout.write('Amending merge commit message to include links ... ')
