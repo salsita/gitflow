@@ -13,7 +13,9 @@ def ask(option, question, set_globally=False, secret=False):
     answer = None
     while not answer:
         try:
-            answer = gitflow.get(option).replace(MAGIC_STRING, '-')
+            answer = gitflow.get(option)
+            if isinstance(answer, basestring):
+                answer = answer.replace(MAGIC_STRING, '-')
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
             while not answer:
                 if secret:
@@ -32,7 +34,10 @@ def pick(option, title, source):
     # Try to get the option from config first.
     gitflow = GitFlow()
     try:
-        return gitflow.get(option).replace(MAGIC_STRING, '-')
+        opt = gitflow.get(option)
+        if isinstance(opt, basestring):
+            opt = opt.replace(MAGIC_STRING, '-')
+        return opt
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         pass
 
@@ -62,5 +67,7 @@ def pick(option, title, source):
         if a >= 1 and a <= i:
             answer = suggestions[a-1][0]
 
-    gitflow.set(option, answer.replace('-', MAGIC_STRING))
+    if isinstance(answer, basestring):
+        answer = answer.replace('-', MAGIC_STRING)
+    gitflow.set(option, answer)
     return answer
