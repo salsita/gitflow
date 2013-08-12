@@ -89,18 +89,14 @@ class BranchReview(object):
                         "%s%n%n"
                         "%b",
                     '{0[0]}...{0[1]}'.format(self._rev_range)]
-        desc = '> Story being reviewed: {0}\n'.format(story.get_url()) + \
-               '\n' \
-               'COMMIT LOG\n' \
-                + sub.check_output(desc_cmd)
+        desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
+        desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
         # 7 is the magical offset to get the first commit subject
         summary = desc.split('\n')[7]
 
         # If we are updating an existing review, reuse its summary.
         if self._summary is not None:
             summary = self._summary
-
-        cmd.append('--summary=' + str(summary))
 
         # If we are updating an existing review, reuse part of its description.
         if self._description is not None:
@@ -112,14 +108,15 @@ class BranchReview(object):
                 kept_desc.append(line)
             desc = '\n'.join(kept_desc) + '\n' + desc
 
-        cmd.append('--description=' + str(desc))
-
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
             cmd.append('--review-request-id')
             cmd.append(str(self._rid))
         else:
             sys.stdout.write('new review ... ')
+
+        cmd.append('--summary=' + str(summary))
+        cmd.append('--description=' + str(desc))
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
@@ -130,10 +127,16 @@ class BranchReview(object):
             print(outdata)
             print('<<<< rbt output')
         else:
+            debug_cmd = ' '.join(cmd[:-2])
+            debug_cmd += " --summary='{0}' --description='{1}' --debug" \
+                         .format(summary, desc_prefix)
             print('FAIL')
             print('>>>> rbt error output')
             print(errdata)
             print('<<<< rbt error output')
+            print('If the error output is not sufficient, execute')
+            print('\n    $ {0}\n'.format(debug_cmd))
+            print('and see what happens.')
             raise PostReviewError('Failed to post review request.')
 
         # Use list comprehension to get rid of emply trailing strings.
