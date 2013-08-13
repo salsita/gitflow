@@ -243,13 +243,17 @@ class FeatureCommand(GitFlowCommand):
         #p.add_argument('-k', '--keep', action='store_true', default=True,
         #        help='Keep branch after performing finish.')
         p.add_argument('-D', '--force-delete', action='store_true',
-            default=False, help='Force delete feature branch after finish.')
+                default=False, help='Force delete feature branch after finish.')
         p.add_argument('-R', '--no-review', action='store_true',
-            default=False, help='Do not post a review request.'
+                default=False, help='Do not post a review request.'
                 'not just for the last commit.')
+        p.add_argument('-S', '--summary-from-commit',
+                action='store_true', default=False,
+                help='Use the last commit title instead of Pivotal Tracker '
+                'story name for summary in Review Board.')
         p.add_argument('-P', '--no-push', action='store_true',
-            default=False, help='Do not push the develop branch to origin '
-            'after merging with the feature branch.')
+                default=False, help='Do not push the develop branch to origin '
+                'after merging with the feature branch.')
         p.add_argument('nameprefix', nargs='?')
 
     @staticmethod
@@ -306,7 +310,7 @@ class FeatureCommand(GitFlowCommand):
         if not args.no_review:
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
             review = BranchReview.from_identifier('feature', name, rev_range)
-            review.post(story)
+            review.post(story, summary_from_story=(not args.summary_from_commit))
             print('OK')
 
             sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
