@@ -80,6 +80,8 @@ class BranchReview(object):
 
         self._check_for_existing_review()
 
+        summary = story.get_name()
+
         desc_cmd = ['git', 'log',
                     "--pretty="
                         "--------------------%n"
@@ -91,8 +93,6 @@ class BranchReview(object):
                     '{0[0]}...{0[1]}'.format(self._rev_range)]
         desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
         desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
-        # 7 is the magical offset to get the first commit subject
-        summary = desc.split('\n')[7]
 
         # If we are updating an existing review, reuse its summary.
         if self._summary is not None:
