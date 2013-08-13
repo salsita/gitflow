@@ -72,15 +72,13 @@ class BranchReview(object):
         else:
             raise AttributeError('Neither review id nor review url is defined.')
 
-    def post(self, story):
+    def post(self, story, summary_from_story=True):
         assert self._rev_range
         cmd = ['rbt', 'post',
                '--branch', self._branch,
                '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
 
         self._check_for_existing_review()
-
-        summary = story.get_name()
 
         desc_cmd = ['git', 'log',
                     "--pretty="
@@ -93,6 +91,12 @@ class BranchReview(object):
                     '{0[0]}...{0[1]}'.format(self._rev_range)]
         desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
         desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
+
+        if summary_from_story:
+            summary = story.get_name()
+        else:
+            # 7 is the magical offset to get the first commit subject
+            summary = desc.split('\n')[7]
 
         # If we are updating an existing review, reuse its summary.
         if self._summary is not None:
