@@ -350,31 +350,9 @@ def get_feature_ancestor(feature, upstream):
         raise EmptyDiff('{0} and {1} are pointing to the same commit.' \
                 .format(upstream, feature))
 
-    # Get all commits being a part of the respective branches.
-    upstream_ancestors = sub.check_output(
-            ['git', 'rev-list', '--first-parent', upstream])
-    feature_ancestors = sub.check_output(
-            ['git', 'rev-list', '--first-parent', feature])
+    base_marker = _gitflow.managers['feature'].base_marker_name(feature)
+    for ref in repo.refs:
+        if str(ref) == base_marker:
+            return ref
 
-    # Compute the diff between the lists.
-    ancestor_diff = diff.unified_diff(
-            upstream_ancestors.split('\n'), feature_ancestors.split('\n'))
-
-    ancestor = None
-    # The first line to match this is the ancestor we are looking for.
-    pattern = re.compile(' [0-9a-f]{40}$')
-    for line in ancestor_diff:
-        if pattern.match(line):
-            ancestor = line.strip()
-            break
-
-    # Not sure this can really happen, but just to be sure.
-    # This happens usually when you compare a commit with itself,
-    # but that is already being taken care of at the beginning of the function.
-    if ancestor is None:
-        raise AncestorNotFound('No common ancestor of {0} and {1} found.' \
-                .format(upstream, feature))
-
-    # Just to be sure, explode as soon as possible.
-    assert ancestor
-    return ancestor
+    raise AncestorNotFound('Base marker missing for ' + feature)

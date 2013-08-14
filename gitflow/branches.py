@@ -356,6 +356,19 @@ class FeatureBranchManager(BranchManager):
         if push:
             gitflow.origin().push(to_push)
 
+    def base_marker_name(self, feature):
+        gitflow = self.gitflow
+
+        marker = 'base_' + gitflow.get_prefix(self.identifier)
+        feature = feature[len(gitflow.get_prefix(self.identifier)):]
+        for c in feature:
+            if '0' <= c <= '9':
+                marker += c
+            else:
+                break
+
+        return marker
+
 
 class ReleaseBranchManager(BranchManager):
     identifier = 'release'

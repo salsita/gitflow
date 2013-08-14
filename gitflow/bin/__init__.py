@@ -167,6 +167,7 @@ class FeatureCommand(GitFlowCommand):
         if args.for_release:
             pivotal.check_version_format(args.for_release)
         gitflow = GitFlow()
+        git     = gitflow.git
 
         if args.for_release is not None:
             # Make sure --for-release matches the requirements.
@@ -215,6 +216,12 @@ class FeatureCommand(GitFlowCommand):
             raise
         except Exception, e:
             die("Could not create feature branch %r" % name, e)
+
+        # Mark beginning of the feature branch with another branch
+        sys.stdout.write('Inserting feature start marker ... ')
+        base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
+        git.branch(base_marker, gitflow.develop_name())
+        print('OK')
 
         if args.for_release is not None:
             story.assign_to_release(args.for_release)
@@ -386,9 +393,13 @@ class FeatureCommand(GitFlowCommand):
     @staticmethod
     def run_publish(args):
         gitflow = GitFlow()
+        git     = gitflow.git
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
         gitflow.start_transaction('publishing feature branch %s' % name)
         branch = gitflow.publish('feature', name)
+        print(branch)
+        base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
+        git.push(gitflow.origin_name(), base_marker)
         print
         print "Summary of actions:"
         print "- A new remote branch '%s' was created" % branch
@@ -704,14 +715,17 @@ class ReleaseCommand(GitFlowCommand):
         for story in pt_release:
             # prefix = <feature-prefix>/<id>
             prefix = feature_prefix + str(story.get_id())
+            base_marker = gitflow.managers['feature'].base_marker_name(prefix)
             try:
                 name = gitflow.nameprefix_or_current('feature', prefix)
                 local_branches.append(feature_prefix + name)
+                if base_marker in gitflow.repo.refs:
+                    local_branches.append(base_marker)
             except NoSuchBranchError:
                 pass
             for ref in refs:
                 # if <feature-prefix>/... startswith <feature-prefix>/<id>
-                if ref.startswith(prefix):
+                if ref.startswith(prefix) or ref == base_marker:
                     remote_branches.append(ref)
         #+ Collect releases to be deleted.
         release_branch = gitflow.get_prefix('release') + version
