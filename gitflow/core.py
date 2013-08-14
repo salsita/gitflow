@@ -829,6 +829,7 @@ Git config '%s' missing, please fill it in by executing
         # configure remote tracking
         repo.branches[full_name].set_tracking_branch(info.remote_ref)
 
+        return full_name
 
     @requires_initialized
     def pull(self, identifier, remote, name):
