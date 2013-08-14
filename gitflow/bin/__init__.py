@@ -218,7 +218,7 @@ class FeatureCommand(GitFlowCommand):
             die("Could not create feature branch %r" % name, e)
 
         # Mark beginning of the feature branch with another branch
-        sys.stdout.write('Inserting feature start marker ... ')
+        sys.stdout.write('Inserting feature base marker ... ')
         base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
         git.branch(base_marker, gitflow.develop_name())
         print('OK')
@@ -304,15 +304,6 @@ class FeatureCommand(GitFlowCommand):
                        tagging_info=None, push=(not args.no_push))
         print 'OK'
 
-        # Get and set the state of the feature.
-        sys.stdout.write('Updating Pivotal Tracker ... ')
-        if story.is_finished():
-            sys.stdout.write('story already finished, skipping ... ')
-        else:
-            sys.stdout.write('finishing %s ... ' % story.get_id())
-            story.finish()
-        print 'OK'
-
         #+++ Review Request
         if not args.no_review:
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
@@ -324,6 +315,15 @@ class FeatureCommand(GitFlowCommand):
             comment = 'New patch was uploaded into Review Board: ' + review.get_url()
             story.add_comment(comment)
             print('OK')
+
+        #+++ Finish PT story
+        sys.stdout.write('Updating Pivotal Tracker ... ')
+        if story.is_finished():
+            sys.stdout.write('story already finished, skipping ... ')
+        else:
+            sys.stdout.write('finishing %s ... ' % story.get_id())
+            story.finish()
+        print 'OK'
 
         #+++ Git modify merge message
         #sys.stdout.write('Amending merge commit message to include links ... ')
