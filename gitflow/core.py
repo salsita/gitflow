@@ -327,6 +327,7 @@ Git config '%s' missing, please fill it in by executing
                 # Let's try 3 times...
                 err = None
                 for x in range(3):
+                    err = None
                     try:
                         return self._remote.fetch(refspec=refspec,
                                 progress=progress, **kwargs)
