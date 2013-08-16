@@ -327,7 +327,6 @@ Git config '%s' missing, please fill it in by executing
                 # Let's try 3 times...
                 err = None
                 for x in range(3):
-                    err = None
                     try:
                         return self._remote.fetch(refspec=refspec,
                                 progress=progress, **kwargs)
@@ -338,6 +337,7 @@ Git config '%s' missing, please fill it in by executing
                         func_name = traceback.extract_stack()[-1][2]
                         if func_name != '_get_fetch_info_from_stderr':
                             raise e
+                        err = None
                 # If we somehow get the same exception 3 times, just raise anyway.
                 raise err
 
