@@ -165,7 +165,7 @@ class BranchReview(object):
     def is_accepted(self):
         assert self._rid
         reviews = self._client.get_reviews_for_review_request(self._rid)
-        return any(r['ship_it'] for r in reviews)
+        return len(reviews) > 0 and bool(reviews[-1]['ship_it'])
 
     def _update(self, **kwargs):
         self._client.update_request(self.get_id(), fields=kwargs, publish=True)
