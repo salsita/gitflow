@@ -169,13 +169,11 @@ class FeatureCommand(GitFlowCommand):
         gitflow = GitFlow()
         git     = gitflow.git
 
+        base = None
         if args.for_release is not None:
             # Make sure --for-release matches the requirements.
-            prefix = gitflow.get_prefix('release')
-            matcher = gitflow._safe_get('gitflow.release.versionmatcher')
-            if not re.match(matcher + '$', args.for_release):
-                raise IlegalVersionFormatmat(matcher)
-            base = prefix + args.for_release
+            pivotal.check_version_format(args.for_release)
+            base = gitflow.get_prefix('release') + args.for_release
         else:
             base = gitflow.managers['feature'].default_base()
 
@@ -184,8 +182,15 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
-        # Check if develop in sync as soon as possible.
-        gitflow.must_be_uptodate(gitflow.develop_name())
+        # Check if the base exists and is in sync as soon as possible.
+        sys.stdout.write('Checking the base branch ({0}) ... '.format(base))
+        origin_base = gitflow.require_origin_branch(base)
+        try:
+            gitflow.must_be_uptodate(base)
+        except NoSuchBranchError:
+            sys.stdout.write('found remote counterpart ... ')
+            git.branch(base, origin_base.name)
+        print('OK')
 
         [story, name] = pivotal.prompt_user_to_select_story()
 
@@ -220,7 +225,7 @@ class FeatureCommand(GitFlowCommand):
         # Mark beginning of the feature branch with another branch
         sys.stdout.write('Inserting feature base marker ... ')
         base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
-        git.branch(base_marker, gitflow.develop_name())
+        git.branch(base_marker, base)
         print('OK')
 
         if args.for_release is not None:

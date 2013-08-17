@@ -533,7 +533,7 @@ Git config '%s' missing, please fill it in by executing
             commit1 = self.repo.rev_parse(branch1)
             commit2 = self.repo.rev_parse(branch2)
         except git.BadObject, e:
-            raise NoSuchBranchError(e.args[0])
+            raise NoSuchBranchError('Branch {0} not found'.format(e.args[0]))
         if commit1 == commit2:
             return 0
         try:
