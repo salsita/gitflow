@@ -6,7 +6,7 @@ Pure-Python implementation of Git extensions to provide high-level
 repository operations for Vincent Driessen's
 `branching model <http://nvie.com/git-model>`_.
 
-We've added a few tweaks to make it cooperate with Pivotal Tracker and Review Board.
+We've added a few tweaks to make it cooperate with Pivotal Tracker, Review Board and Jenkins.
 
 
 Getting started
@@ -27,6 +27,15 @@ Or have a look at one of these screen casts:
 * `On the path with git-flow
   <http://codesherpas.com/screencasts/on_the_path_gitflow.mov>`_
   (by Dave Bock)
+
+Salsita GitFlow basically follows the same guidelines, it just interacts with some other tools as well.
+Features are tied to Pivotal Tracker stories and Review Board review requests, so:
+
+* ``feature start`` lets you choose a Pivotal Tracker story to be started.
+* ``feature finish`` finishes the PT story and posts the feature diff into Review Board. You can call ``feature finish`` multiple times and it will detect existing review request and update it. Every time you run ``feature finish``, the assocciated Jenkins doploy job is triggered and the develop branch is deployed to the develop environment.
+* ``release start`` adds labels to the currently finished Pivotal Tracker stories, thus assigning them to the release of your choice. The newly created release branch is deployed to the QA environment so that it can be tested.
+* ``release finish`` checks if all the relevant stories have been reviewed and QA'd and if that is the case, the release branch is deployed to the QA environment to be tested. The release branch is deployed into the client environment so that the PT stories can be tested and accepted by the client.
+* ``release deliver`` checks if all the relevant stories were accepted by the client and if that is the case, the release is finished and closed, i.e. all the branches are merged and review requests submitted. The project is then deployed to the production environment.
 
 
 Installing salsita-gitflow
@@ -50,10 +59,9 @@ Global (same for all projects)::
 * git config --global reviewboard.server https://example.com/rb/
 * git config --global gitflow.pt.token 12345678910
 
-You will be prompted for the project-specific settings during ``git flow init``.
+You will be prompted for the project-specific settings during ``git flow init`` or other commands when the need arises.
 
 If you have the original `git-flow <https://github.com/nvie/gitflow>` installed, just go to the git bin folder and delete everything that starts with ``git-flow``.
-
 
 Integration with your shell
 ---------------------------
@@ -79,27 +87,22 @@ feedback.
 Feel free to fork this repo and to commit your additions. For a list
 of all contributors, please see the :file:`AUTHORS.txt`.
 
-Salsita is using `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
-for code review.
-
 You will need :module:`unittest2` to run the tests (which are completely broken as of now, so nevermind).
+
 
 On the cutting edge
 ===================
 
-The source code here on GitHub is the one that has been code reviewed.
-If you, however, wish to try the changes that are still yet to be reviewed,
-you can visit `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
-and checkout the commit you want to try/test. If that is the case, we advice you to:
+If you want to install salsita-gitflow from the develop or a release branch, follow these steps:
 
 #. Use `virtualenv <https://pypi.python.org/pypi/virtualenv>`_ to create the testing environment.
-#. Once the environment is activated, get the commit you want:
+#. Once the environment is activated, get the sources:
 
-   #. ``mkdir src && cd src``
-   #. ``git init``
-   #. Go to the commit page in Gerrit, get the exact command to execute, e.g. ``git fetch https://dev.salsitasoft.com/gerrit/gitflow refs/changes/02/2/1 && git checkout FETCH_HEAD``
+   #. ``git clone https://github.com/salsita/gitflow.git``
+   #. ``git checkout develop`` or ``git checkout release/X.Y.Z``
    #. ``python setup.py install``
    #. The git flow commands should be available to you now, just make sure you are using the right one (``man which``)
+
 
 License terms
 ==================
@@ -124,7 +127,7 @@ To initialize a new repo with the basic branch structure, use::
   
     git flow init [-d]
   
-This will then interactively prompt you with some questions on which
+This will then interactively prompt you with some questions like what
 branches you would like to use as development and production branches,
 and how you would like your prefixes be named. You may simply press
 Return on any of those questions to accept the (sane) default
@@ -176,7 +179,6 @@ a more complete list. The best documentation is, however,::
       git flow release
       git flow release start [-D|--no-deploy] <major.minor.release> [<base>]
       git flow release finish [-R|--ignore-missing-reviews] [<major.minor.release>]
-      git flow release deploy <major.minor.release> {qa|client|production}
 
   ``release start`` will by default access Jenkins and it will trigger the
   deployment job paired with your project. No need to set up any git config
@@ -190,13 +192,7 @@ a more complete list. The best documentation is, however,::
   you can use ``-R`` or ``--ignore-missing-reviews`` to skip the reviews check
   while doing a release.
 
-  ``release deploy`` is usually used together with other release commands and
-  there is no need to run it manually. But if there is a situation when you need
-  to deploy a release branch manually, you can do so with ``release deploy``.
-  You just have to specify the version and the environmen you want to use and
-  the appropriate Jenkins job will be triggered for you.
-
- * To list/start/finish hotfix branches (not supported by Salsita), use::
+* To list/start/finish hotfix branches (not supported by Salsita), use::
 
       git flow hotfix
       git flow hotfix start <release> [<base>]
@@ -208,6 +204,20 @@ a more complete list. The best documentation is, however,::
       git flow support start <release> <base>
   
   For support branches, the ``<base>`` arg must be a commit on ``master``.
+
+Deploying Projects with gitflow
+-------------------------------
+
+There is one more subcommand that does not really fit into the original GitFlow.
+It is ``git flow deploy``. It is invoked by ``release start|finish|deliver``
+automatically, but you can as well trigger deployment separately by typing::
+
+        git flow deploy develop
+        git flow deploy release <version> {qa,staging}
+        git flow deploy master
+
+Only the release version accepts additional parameters since the other two forms
+imply what branch and what environment to use.
 
 Demo
 ----
