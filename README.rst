@@ -87,17 +87,13 @@ You will need :module:`unittest2` to run the tests (which are completely broken 
 On the cutting edge
 ===================
 
-The source code here on GitHub is the one that has been code reviewed.
-If you, however, wish to try the changes that are still yet to be reviewed,
-you can visit `Gerrit <https://dev.salsitasoft.com/gerrit/#/q/status:open+project:gitflow,n,z>`_
-and checkout the commit you want to try/test. If that is the case, we advice you to:
+If you want to install salsita-gitflow from the develop or a release branch, follow these steps:
 
 #. Use `virtualenv <https://pypi.python.org/pypi/virtualenv>`_ to create the testing environment.
-#. Once the environment is activated, get the commit you want:
+#. Once the environment is activated, get the sources:
 
-   #. ``mkdir src && cd src``
-   #. ``git init``
-   #. Go to the commit page in Gerrit, get the exact command to execute, e.g. ``git fetch https://dev.salsitasoft.com/gerrit/gitflow refs/changes/02/2/1 && git checkout FETCH_HEAD``
+   #. ``git clone https://github.com/salsita/gitflow.git``
+   #. ``git checkout develop`` or ``git checkout release/X.Y.Z``
    #. ``python setup.py install``
    #. The git flow commands should be available to you now, just make sure you are using the right one (``man which``)
 
