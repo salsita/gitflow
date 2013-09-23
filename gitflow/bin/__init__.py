@@ -169,13 +169,11 @@ class FeatureCommand(GitFlowCommand):
         gitflow = GitFlow()
         git     = gitflow.git
 
+        base = None
         if args.for_release is not None:
             # Make sure --for-release matches the requirements.
-            prefix = gitflow.get_prefix('release')
-            matcher = gitflow._safe_get('gitflow.release.versionmatcher')
-            if not re.match(matcher + '$', args.for_release):
-                raise IlegalVersionFormatmat(matcher)
-            base = prefix + args.for_release
+            pivotal.check_version_format(args.for_release)
+            base = gitflow.get_prefix('release') + args.for_release
         else:
             base = gitflow.managers['feature'].default_base()
 
@@ -184,8 +182,15 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
-        # Check if develop in sync as soon as possible.
-        gitflow.must_be_uptodate(gitflow.develop_name())
+        # Check if the base exists and is in sync as soon as possible.
+        sys.stdout.write('Checking the base branch ({0}) ... '.format(base))
+        origin_base = gitflow.require_origin_branch(base)
+        try:
+            gitflow.must_be_uptodate(base)
+        except NoSuchBranchError:
+            sys.stdout.write('found remote counterpart ... ')
+            git.branch(base, origin_base.name)
+        print('OK')
 
         [story, name] = pivotal.prompt_user_to_select_story()
 
@@ -218,9 +223,9 @@ class FeatureCommand(GitFlowCommand):
             die("Could not create feature branch %r" % name, e)
 
         # Mark beginning of the feature branch with another branch
-        sys.stdout.write('Inserting feature start marker ... ')
+        sys.stdout.write('Inserting feature base marker ... ')
         base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
-        git.branch(base_marker, gitflow.develop_name())
+        git.branch(base_marker, base)
         print('OK')
 
         if args.for_release is not None:
@@ -304,15 +309,6 @@ class FeatureCommand(GitFlowCommand):
                        tagging_info=None, push=(not args.no_push))
         print 'OK'
 
-        # Get and set the state of the feature.
-        sys.stdout.write('Updating Pivotal Tracker ... ')
-        if story.is_finished():
-            sys.stdout.write('story already finished, skipping ... ')
-        else:
-            sys.stdout.write('finishing %s ... ' % story.get_id())
-            story.finish()
-        print 'OK'
-
         #+++ Review Request
         if not args.no_review:
             sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
@@ -324,6 +320,15 @@ class FeatureCommand(GitFlowCommand):
             comment = 'New patch was uploaded into Review Board: ' + review.get_url()
             story.add_comment(comment)
             print('OK')
+
+        #+++ Finish PT story
+        sys.stdout.write('Updating Pivotal Tracker ... ')
+        if story.is_finished():
+            sys.stdout.write('story already finished, skipping ... ')
+        else:
+            sys.stdout.write('finishing %s ... ' % story.get_id())
+            story.finish()
+        print 'OK'
 
         #+++ Git modify merge message
         #sys.stdout.write('Amending merge commit message to include links ... ')
@@ -507,8 +512,8 @@ class ReleaseCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_start)
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the QA environment upon release start.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the QA environment upon release start.')
         p.add_argument('version', action=NotEmpty)
 
     @staticmethod
@@ -573,7 +578,7 @@ class ReleaseCommand(GitFlowCommand):
         gitflow.checkout('release', release.get_version())
 
         #+ Deploy to the QA environment.
-        if not args.no_deploy:
+        if args.deploy:
             # args.version is already set, set args.environ as well.
             args.environ = 'qa'
             args.no_fetch = True
@@ -599,8 +604,8 @@ class ReleaseCommand(GitFlowCommand):
                        help='Just print a warning if there is no review for '
                             'a feature branch that is assigned to this release,'
                             ' do not fail.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the client staging environment.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the client staging environment.')
         p.add_argument('version', action=NotEmpty, help="Release to finish.")
 
     @staticmethod
@@ -626,7 +631,7 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         # Trigger the deployment job
-        if not args.no_deploy:
+        if args.deploy:
             args.environ = 'client'
             args.no_check = True
             DeployCommand.run_release(args)
@@ -639,8 +644,8 @@ class ReleaseCommand(GitFlowCommand):
         # fetch by default
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the production environment upon release finish.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the production environment upon release finish.')
         # push by default
         p.add_argument('-P', '--no-push', action='store_true',
                        #:todo: get "origin" from config
@@ -757,7 +762,7 @@ class ReleaseCommand(GitFlowCommand):
         print '    OK'
 
         #+++ Trigger the deploy job
-        if not args.no_deploy:
+        if args.deploy:
             # The checks were already performed, skip them.
             args.no_check = True
             DeployCommand.run_master(args)
