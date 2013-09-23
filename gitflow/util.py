@@ -41,5 +41,3 @@ def itersubclasses(cls, _seen=None):
             yield sub
             for sub in itersubclasses(sub, _seen):
                 yield sub
-
-

@@ -52,8 +52,12 @@ class BranchReview(object):
 
     def __getattr__(self, name):
         if name == '_rid':
-            self._rid = self._branch_to_rid(self._branch)
+            self._update_from_existing_review()
             return self._rid
+        if name == '_summary':
+            return None
+        if name == '_description':
+            return None
         raise AttributeError
 
     def get_id(self):
@@ -68,16 +72,45 @@ class BranchReview(object):
         else:
             raise AttributeError('Neither review id nor review url is defined.')
 
-    def post(self, summary=None, desc=None):
+    def post(self, story, summary_from_story=True):
         assert self._rev_range
         cmd = ['rbt', 'post',
                '--branch', self._branch,
                '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
-        if summary is None or desc is None:
-            cmd.append('--guess-fields')
+
+        self._check_for_existing_review()
+
+        desc_cmd = ['git', 'log',
+                    "--pretty="
+                        "--------------------%n"
+                        "Author:    %an <%ae>%n"
+                        "Committer: %cn <%ce>%n"
+                        "%n"
+                        "%s%n%n"
+                        "%b",
+                    '{0[0]}...{0[1]}'.format(self._rev_range)]
+        desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
+        desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
+
+        if summary_from_story:
+            summary = story.get_name()
         else:
-            cmd.append('--summary=' + str(summary))
-            cmd.append('--description=' + str(desc))
+            # 7 is the magical offset to get the first commit subject
+            summary = desc.split('\n')[7]
+
+        # If we are updating an existing review, reuse its summary.
+        if self._summary is not None:
+            summary = self._summary
+
+        # If we are updating an existing review, reuse part of its description.
+        if self._description is not None:
+            lines = self._description.split('\n')
+            kept_desc = []
+            for line in lines:
+                if line.startswith('> Story being reviewed'):
+                    break
+                kept_desc.append(line)
+            desc = '\n'.join(kept_desc) + '\n' + desc
 
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
@@ -85,6 +118,9 @@ class BranchReview(object):
             cmd.append(str(self._rid))
         else:
             sys.stdout.write('new review ... ')
+
+        cmd.append('--summary=' + str(summary))
+        cmd.append('--description=' + str(desc))
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
@@ -95,10 +131,16 @@ class BranchReview(object):
             print(outdata)
             print('<<<< rbt output')
         else:
+            debug_cmd = ' '.join(cmd[:-2])
+            debug_cmd += " --summary='{0}' --description='{1}' --debug" \
+                         .format(summary, desc_prefix)
             print('FAIL')
             print('>>>> rbt error output')
             print(errdata)
             print('<<<< rbt error output')
+            print('If the error output is not sufficient, execute')
+            print('\n    $ {0}\n'.format(debug_cmd))
+            print('and see what happens.')
             raise PostReviewError('Failed to post review request.')
 
         # Use list comprehension to get rid of emply trailing strings.
@@ -135,7 +177,14 @@ class BranchReview(object):
         if len(reviews) > 1:
             raise MultipleReviewRequestsForBranch(self._branch)
         elif len(reviews) == 1:
-            return reviews[0]['id']
+            r = reviews[0]
+            self._summary = r['summary']
+            self._description = r['description']
+            return r['id']
+
+    def _check_for_existing_review(self):
+        assert self._branch
+        self._rid = self._branch_to_rid(self._branch)
 
     @classmethod
     def from_prefix(cls, prefix):
@@ -161,6 +210,45 @@ class BranchReview(object):
         name = _gitflow.nameprefix_or_current(identifier, name)
         return cls(prefix + name, rev_range)
 
+
+class Release(object):
+    def __init__(self, stories):
+        self._G = GitFlow()
+        self._stories = stories
+
+    def try_deliver(self, ignore_missing_reviews):
+        assert self._stories
+        feature_prefix = self._G.get_prefix('feature')
+
+        self._reviews = []
+        reviews_expected = 0
+        err = None
+
+        for story in self._stories:
+            prefix = feature_prefix + str(story.get_id())
+            try:
+                reviews_expected += 1
+                review = BranchReview.from_prefix(prefix)
+                review.verify_submit()
+                print('    ' + str(review.get_id()))
+                self._reviews.append(review)
+            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
+                print('    ' + str(e))
+            except Exception as e:
+                print('    ' + str(e))
+                err = e
+        if err is not None:
+            raise SystemExit('An error detected, aborting...')
+        if not ignore_missing_reviews and len(self._reviews) != reviews_expected:
+            raise SystemExit('Some stories have not been reviewed yet,' \
+                    ' aborting...')
+
+    try_finish = try_deliver
+
+    def deliver(self):
+        assert self._reviews is not None
+        for review in self._reviews:
+            review.submit()
 
 def post_review(self, identifier, name, post_new):
     mgr = self.managers[identifier]
@@ -262,31 +350,9 @@ def get_feature_ancestor(feature, upstream):
         raise EmptyDiff('{0} and {1} are pointing to the same commit.' \
                 .format(upstream, feature))
 
-    # Get all commits being a part of the respective branches.
-    upstream_ancestors = sub.check_output(
-            ['git', 'rev-list', '--first-parent', upstream])
-    feature_ancestors = sub.check_output(
-            ['git', 'rev-list', '--first-parent', feature])
+    base_marker = _gitflow.managers['feature'].base_marker_name(feature)
+    for ref in repo.refs:
+        if str(ref) == base_marker:
+            return ref
 
-    # Compute the diff between the lists.
-    ancestor_diff = diff.unified_diff(
-            upstream_ancestors.split('\n'), feature_ancestors.split('\n'))
-
-    ancestor = None
-    # The first line to match this is the ancestor we are looking for.
-    pattern = re.compile(' [0-9a-f]{40}$')
-    for line in ancestor_diff:
-        if pattern.match(line):
-            ancestor = line.strip()
-            break
-
-    # Not sure this can really happen, but just to be sure.
-    # This happens usually when you compare a commit with itself,
-    # but that is already being taken care of at the beginning of the function.
-    if ancestor is None:
-        raise AncestorNotFound('No common ancestor of {0} and {1} found.' \
-                .format(upstream, feature))
-
-    # Just to be sure, explode as soon as possible.
-    assert ancestor
-    return ancestor
+    raise AncestorNotFound('Base marker missing for ' + feature)

@@ -15,14 +15,19 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 
 _gitflow = GitFlow()
 
+def check_version_format(version):
+    matcher = _get_version_matcher()
+    if not re.match(matcher + '$', version):
+        raise IllegalVersionFormat(matcher)
+
+def _get_version_matcher():
+    return _gitflow._safe_get('gitflow.release.versionmatcher')
+
 def _get_client():
     return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))
 
 def _get_project_id():
     return _gitflow._safe_get('gitflow.pt.projectid')
-
-def _get_version_matcher():
-    return _gitflow._safe_get('gitflow.release.versionmatcher')
 
 def _iter_current_stories():
     client = _get_client()
@@ -51,15 +56,9 @@ def _iter_backlog_stories():
 def _iter_stories():
     return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
 
-def _check_version_format(version):
-    matcher = _get_version_matcher()
-    if not re.match(matcher + '$', version):
-        raise IllegalVersionFormat(matcher)
-
 def list_projects():
     projects = _get_client().projects.all()['projects']
     return [(p['id'], p['name']) for p in projects]
-
 
 class Story(object):
     def __init__(self, story_id, _skip_story_download=False):
@@ -135,6 +134,10 @@ class Story(object):
         assert self.is_feature() or self.is_bug()
         return self.get_state() == 'delivered'
 
+    def is_accepted(self):
+        assert self.is_feature() or self.is_bug()
+        return self.get_state() == 'accepted'
+
     def is_rejected(self):
         assert self.is_feature() or self.is_bug()
         return self.get_state() == 'rejected'
@@ -148,7 +151,7 @@ class Story(object):
 
     def assign_to_release(self, release):
         assert self.is_feature() or self.is_bug()
-        _check_version_format(release)
+        check_version_format(release)
         if self.get_release():
             raise ReleaseAlreadyAssigned('Story already assigned to a release')
         self.add_label('release-' + release)
@@ -223,11 +226,16 @@ class Story(object):
 
 class Release(object):
     def __init__(self, version, _skip_story_download=False):
-        _check_version_format(version)
+        check_version_format(version)
         self._version = version
         if _skip_story_download:
             return
         self._current_stories = list(_iter_current_stories())
+
+    def __iter__(self):
+        for story in self._current_stories:
+            if story.is_labeled('release-' + self._version):
+                yield story
 
     def get_version(self):
         assert self._version
@@ -237,9 +245,9 @@ class Release(object):
         for story in self.iter_candidates():
             story.assign_to_release(self._version)
 
-    def try_deliver(self):
+    def try_finish(self):
         err = False
-        for story in self.iter_stories():
+        for story in self:
             if not story.is_labeled('qa+'):
                 # Allow zero-point stories not to be QA'd since they are
                 # by definition refactoring stories.
@@ -253,24 +261,29 @@ class Release(object):
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
-    def deliver(self):
-        print 'Following stories were delivered as of release %s:' \
+    def finish(self):
+        print 'Following stories were delivered for client acceptance as of release %s:' \
               % self._version
-        for story in self.iter_stories():
+        for story in self:
             story.deliver()
             sys.stdout.write('    ')
             story.dump()
+
+    def try_deliver(self):
+        self.try_finish()
+        err = False
+        for story in self:
+            if not story.is_accepted():
+                err = True
+                print('    Story not accepted: ' + story.get_url())
+        if err:
+            raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
     def prompt_for_confirmation(self):
         answer = raw_input("Do you wish to start the release? [y/N]: ")
         if answer.lower() == 'y':
             return True
         return False
-
-    def iter_stories(self):
-        for story in self._current_stories:
-            if story.is_labeled('release-' + self._version):
-                yield story
 
     def iter_candidates(self):
         for story in self._current_stories:
@@ -281,7 +294,7 @@ class Release(object):
 
     def dump_stories(self):
         print '%s %s %s %s' % (32 * '-', 'Release', self._version, 33 * '-')
-        for story in self.iter_stories():
+        for story in self:
             story.dump(highlight_labels=['release-' + self._version])
         print 80 * '-' + '\n'
 

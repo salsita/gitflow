@@ -27,6 +27,7 @@ import subprocess as sub
 
 from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
+from gitflow.jenkins import Jenkins
 from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
@@ -34,6 +35,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 IllegalVersionFormat, InconsistencyDetected,
                                 PointMeError)
 import gitflow.pivotal as pivotal
+import gitflow.review as review
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
                             get_feature_ancestor)
 
@@ -162,15 +164,16 @@ class FeatureCommand(GitFlowCommand):
 
     @staticmethod
     def run_start(args):
+        if args.for_release:
+            pivotal.check_version_format(args.for_release)
         gitflow = GitFlow()
+        git     = gitflow.git
 
+        base = None
         if args.for_release is not None:
             # Make sure --for-release matches the requirements.
-            prefix = gitflow.get_prefix('release')
-            matcher = gitflow._safe_get('gitflow.release.versionmatcher')
-            if not re.match(matcher + '$', args.for_release):
-                raise IlegalVersionFormatmat(matcher)
-            base = prefix + args.for_release
+            pivotal.check_version_format(args.for_release)
+            base = gitflow.get_prefix('release') + args.for_release
         else:
             base = gitflow.managers['feature'].default_base()
 
@@ -179,8 +182,15 @@ class FeatureCommand(GitFlowCommand):
             gitflow.origin().fetch()
             print 'OK'
 
-        # Check if develop in sync as soon as possible.
-        gitflow.must_be_uptodate(gitflow.develop_name())
+        # Check if the base exists and is in sync as soon as possible.
+        sys.stdout.write('Checking the base branch ({0}) ... '.format(base))
+        origin_base = gitflow.require_origin_branch(base)
+        try:
+            gitflow.must_be_uptodate(base)
+        except NoSuchBranchError:
+            sys.stdout.write('found remote counterpart ... ')
+            git.branch(base, origin_base.name)
+        print('OK')
 
         [story, name] = pivotal.prompt_user_to_select_story()
 
@@ -212,6 +222,12 @@ class FeatureCommand(GitFlowCommand):
         except Exception, e:
             die("Could not create feature branch %r" % name, e)
 
+        # Mark beginning of the feature branch with another branch
+        sys.stdout.write('Inserting feature base marker ... ')
+        base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
+        git.branch(base_marker, base)
+        print('OK')
+
         if args.for_release is not None:
             story.assign_to_release(args.for_release)
         story.start()
@@ -239,13 +255,17 @@ class FeatureCommand(GitFlowCommand):
         #p.add_argument('-k', '--keep', action='store_true', default=True,
         #        help='Keep branch after performing finish.')
         p.add_argument('-D', '--force-delete', action='store_true',
-            default=False, help='Force delete feature branch after finish.')
+                default=False, help='Force delete feature branch after finish.')
         p.add_argument('-R', '--no-review', action='store_true',
-            default=False, help='Do not post a review request.'
+                default=False, help='Do not post a review request.'
                 'not just for the last commit.')
+        p.add_argument('-S', '--summary-from-commit',
+                action='store_true', default=False,
+                help='Use the last commit title instead of Pivotal Tracker '
+                'story name for summary in Review Board.')
         p.add_argument('-P', '--no-push', action='store_true',
-            default=False, help='Do not push the develop branch to origin '
-            'after merging with the feature branch.')
+                default=False, help='Do not push the develop branch to origin '
+                'after merging with the feature branch.')
         p.add_argument('nameprefix', nargs='?')
 
     @staticmethod
@@ -289,7 +309,19 @@ class FeatureCommand(GitFlowCommand):
                        tagging_info=None, push=(not args.no_push))
         print 'OK'
 
-        # Get and set the state of the feature.
+        #+++ Review Request
+        if not args.no_review:
+            sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
+            review = BranchReview.from_identifier('feature', name, rev_range)
+            review.post(story, summary_from_story=(not args.summary_from_commit))
+            print('OK')
+
+            sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
+            comment = 'New patch was uploaded into Review Board: ' + review.get_url()
+            story.add_comment(comment)
+            print('OK')
+
+        #+++ Finish PT story
         sys.stdout.write('Updating Pivotal Tracker ... ')
         if story.is_finished():
             sys.stdout.write('story already finished, skipping ... ')
@@ -297,32 +329,6 @@ class FeatureCommand(GitFlowCommand):
             sys.stdout.write('finishing %s ... ' % story.get_id())
             story.finish()
         print 'OK'
-
-        #+++ Review Request
-        if not args.no_review:
-            sys.stdout.write('Posting review ... upstream %s ... ' % upstream)
-            desc_cmd = ['git', 'log',
-                        "--pretty="
-                            "--------------------%n"
-                            "Author:    %an <%ae>%n"
-                            "Committer: %cn <%ce>%n"
-                            "%n"
-                            "%s%n%n"
-                            "%b",
-                        '{0[0]}...{0[1]}'.format(rev_range)]
-            desc = '> Story being reviewed: {0}\n'.format(story.get_url()) + \
-                   '\n' \
-                   'COMMIT LOG\n' \
-                    + sub.check_output(desc_cmd)
-            # 7 is the magical offset to get the first commit subject
-            summary = desc.split('\n')[7]
-            review = BranchReview.from_identifier('feature', name, rev_range)
-            review.post(summary, desc)
-
-            sys.stdout.write('Posting code review url into Pivotal Tracker ... ')
-            comment = 'New patch was uploaded into Review Board: ' + review.get_url()
-            story.add_comment(comment)
-            print 'OK'
 
         #+++ Git modify merge message
         #sys.stdout.write('Amending merge commit message to include links ... ')
@@ -392,9 +398,13 @@ class FeatureCommand(GitFlowCommand):
     @staticmethod
     def run_publish(args):
         gitflow = GitFlow()
+        git     = gitflow.git
         name = gitflow.nameprefix_or_current('feature', args.nameprefix)
         gitflow.start_transaction('publishing feature branch %s' % name)
         branch = gitflow.publish('feature', name)
+        print(branch)
+        base_marker = gitflow.managers['feature'].base_marker_name(str(branch))
+        git.push(gitflow.origin_name(), base_marker)
         print
         print "Summary of actions:"
         print "- A new remote branch '%s' was created" % branch
@@ -458,7 +468,7 @@ class ReleaseCommand(GitFlowCommand):
         cls.register_list_stories(sub)
         cls.register_start(sub)
         cls.register_finish(sub)
-        cls.register_publish(sub)
+        cls.register_deliver(sub)
         cls.register_track(sub)
 
     #- list
@@ -500,8 +510,10 @@ class ReleaseCommand(GitFlowCommand):
     def register_start(cls, parent):
         p = parent.add_parser('start', help='Start a new release branch.')
         p.set_defaults(func=cls.run_start)
-        p.add_argument('-F', '--fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the QA environment upon release start.')
         p.add_argument('version', action=NotEmpty)
 
     @staticmethod
@@ -514,7 +526,7 @@ class ReleaseCommand(GitFlowCommand):
         any_assigned = False
         print
         print 'Stories already assigned to this release:'
-        for story in release.iter_stories():
+        for story in release:
             sys.stdout.write('    ')
             story.dump()
             any_assigned = True
@@ -552,7 +564,7 @@ class ReleaseCommand(GitFlowCommand):
                          % base)
         try:
             branch = gitflow.create('release', args.version, base,
-                                    fetch=args.fetch)
+                                    fetch=(not args.no_fetch))
         except BranchExistsError:
             sys.stdout.write('branch already exists ... ')
         except (NotInitialized, BranchTypeExistsError, BaseNotOnBranch):
@@ -564,6 +576,13 @@ class ReleaseCommand(GitFlowCommand):
 
         release.start()
         gitflow.checkout('release', release.get_version())
+
+        #+ Deploy to the QA environment.
+        if args.deploy:
+            # args.version is already set, set args.environ as well.
+            args.environ = 'qa'
+            args.no_fetch = True
+            DeployCommand.run_release(args)
 
         print
         print "Follow-up actions:"
@@ -579,9 +598,54 @@ class ReleaseCommand(GitFlowCommand):
     def register_finish(cls, parent):
         p = parent.add_parser('finish', help='Finish a release branch.')
         p.set_defaults(func=cls.run_finish)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the client staging environment.')
+        p.add_argument('version', action=NotEmpty, help="Release to finish.")
+
+    @staticmethod
+    def run_finish(args):
+        assert args.version
+        pivotal.check_version_format(args.version)
+
+        # Check if all stories were QA'd
+        pt_release = pivotal.Release(args.version)
+        print('Checking Pivotal Tracker stories ... ')
+        pt_release.try_finish()
+        print('OK')
+
+        # Check if all relevant review requests are there
+        rb_release = review.Release(pt_release)
+        print('Checking Review Board review requests ... ')
+        rb_release.try_finish(args.ignore_missing_reviews)
+        print('OK')
+
+        # Deliver all relevant PT stories
+        print('Delivering all relevant Pivotal Tracker stories ... ')
+        pt_release.finish()
+        print('OK')
+
+        # Trigger the deployment job
+        if args.deploy:
+            args.environ = 'client'
+            args.no_check = True
+            DeployCommand.run_release(args)
+
+    #- deliver
+    @classmethod
+    def register_deliver(cls, parent):
+        p = parent.add_parser('deliver', help='Deliver a release branch.')
+        p.set_defaults(func=cls.run_deliver)
         # fetch by default
         p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Fetch from origin before performing local operation.')
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the production environment upon release finish.')
         # push by default
         p.add_argument('-P', '--no-push', action='store_true',
                        #:todo: get "origin" from config
@@ -592,7 +656,7 @@ class ReleaseCommand(GitFlowCommand):
                        help='Just print a warning if there is no review for '
                             'a feature branch that is assigned to this release,'
                             ' do not fail.')
-        p.add_argument('version', nargs='?')
+        p.add_argument('version', action=NotEmpty, help="Release to deliver.")
 
         g = p.add_argument_group('tagging options')
         g.add_argument('-n', '--notag', action='store_true',
@@ -606,46 +670,22 @@ class ReleaseCommand(GitFlowCommand):
                      "instead of the default git uses (implies -s).")
 
     @staticmethod
-    def run_finish(args):
+    def run_deliver(args):
         gitflow = GitFlow()
         git     = gitflow.git
         origin  = gitflow.origin()
         version = gitflow.name_or_current('release', args.version)
 
-        #+++ Check QA
-        release = pivotal.Release(version)
-        print "Checking Pivotal Tracker stories ... "
-        try:
-            release.try_deliver()
-        except GitflowError:
-            raise SystemExit('FAIL')
-        print 'OK'
+        #+++ Check if all stories were QA'd
+        pt_release = pivotal.Release(args.version)
+        print('Checking Pivotal Tracker stories ... ')
+        pt_release.try_deliver()
+        print('OK')
 
-        #+++ Check all relevant review requests in Review Board
-        feature_prefix = gitflow.get_prefix('feature')
-
-        reviews = list()
-        reviews_expected = 0
-        err = None
-        print('Checking if all relevant stories have been reviewed ... ')
-        for story in release.iter_stories():
-            prefix = feature_prefix + str(story.get_id())
-            try:
-                reviews_expected += 1
-                r = BranchReview.from_prefix(prefix)
-                r.verify_submit()
-                print('    ' + str(r.get_id()))
-                reviews.append(r)
-            except (ReviewNotAcceptedYet, NoSuchBranchError) as e:
-                print('    ' + str(e))
-            except Exception as e:
-                print('    ' + str(e))
-                err = e
-        if err is not None:
-            raise SystemExit('An error detected, aborting...')
-        if not args.ignore_missing_reviews and len(reviews) != reviews_expected:
-            raise SystemExit('Some stories have not been reviewed yet,' \
-                    ' aborting...')
+        #+++ Check all relevant review requests in Review Board, to be sure
+        rb_release = review.Release(pt_release)
+        print('Checking Review Board review requests ... ')
+        rb_release.try_deliver(args.ignore_missing_reviews)
         print('OK')
 
         #+++ Merge release branch into develop and master
@@ -660,14 +700,11 @@ class ReleaseCommand(GitFlowCommand):
                                  fetch=(not args.no_fetch), rebase=False,
                                  keep=args.keep, force_delete=False,
                                  tagging_info=tagging_info, push=(not args.no_push))
-        print 'OK'
+        print('OK')
 
-        #+++ Submit all relevant review requests
-        # This is happening only after the branches are successfully merged so
-        # that we don't end up in an inconsistent state.
-        sys.stdout.write('Submitting all relevant review requests found ... ')
-        for r in reviews:
-            r.submit()
+        #+++ Close all relevant review requests
+        sys.stdout.write('Submitting all relevant review requests  ... ')
+        rb_release.deliver()
         print('OK')
 
         #+++ Collect local and remote branches to be deleted
@@ -680,17 +717,20 @@ class ReleaseCommand(GitFlowCommand):
         feature_prefix = gitflow.get_prefix('feature')
         # refs = [<type>/<id>/...]
         refs = [str(ref)[len(origin_prefix):] for ref in origin.refs]
-        for story in release.iter_stories():
+        for story in pt_release:
             # prefix = <feature-prefix>/<id>
             prefix = feature_prefix + str(story.get_id())
+            base_marker = gitflow.managers['feature'].base_marker_name(prefix)
             try:
                 name = gitflow.nameprefix_or_current('feature', prefix)
                 local_branches.append(feature_prefix + name)
+                if base_marker in gitflow.repo.refs:
+                    local_branches.append(base_marker)
             except NoSuchBranchError:
                 pass
             for ref in refs:
                 # if <feature-prefix>/... startswith <feature-prefix>/<id>
-                if ref.startswith(prefix):
+                if ref.startswith(prefix) or ref == base_marker:
                     remote_branches.append(ref)
         #+ Collect releases to be deleted.
         release_branch = gitflow.get_prefix('release') + version
@@ -721,29 +761,11 @@ class ReleaseCommand(GitFlowCommand):
         git.push(str(origin), *refspecs)
         print '    OK'
 
-        #+++ Deliver all relevant stories in Pivotal Tracker
-        release.deliver()
-
-    #- publish
-    @classmethod
-    def register_publish(cls, parent):
-        p = parent.add_parser('publish',
-                help='Publish this release branch to origin.')
-        p.set_defaults(func=cls.run_publish)
-        p.add_argument('version', nargs='?')
-
-    @staticmethod
-    def run_publish(args):
-        gitflow = GitFlow()
-        version = gitflow.name_or_current('release', args.version)
-        gitflow.start_transaction('publishing release branch %s' % version)
-        branch = gitflow.publish('release', version)
-        print
-        print "Summary of actions:"
-        print "- A new remote branch '%s' was created" % branch
-        print "- The local branch '%s' was configured to track the remote branch" % branch
-        print "- You are now on branch '%s'" % branch
-        print
+        #+++ Trigger the deploy job
+        if args.deploy:
+            # The checks were already performed, skip them.
+            args.no_check = True
+            DeployCommand.run_master(args)
 
     #- track
     @classmethod
@@ -752,6 +774,7 @@ class ReleaseCommand(GitFlowCommand):
                 help='Track a release branch from origin.')
         p.set_defaults(func=cls.run_track)
         p.add_argument('version', action=NotEmpty)
+
 
     @staticmethod
     def run_track(args):
@@ -954,6 +977,116 @@ class SupportCommand(GitFlowCommand):
         print "- A new branch", branch, "was created, based on", args.base
         print "- You are now on branch", branch
         print ""
+
+
+class DeployCommand(GitFlowCommand):
+    @classmethod
+    def register_parser(cls, parent):
+        p = parent.add_parser('deploy', help='Deploy a Git branch.')
+        p.add_argument('-v', '--verbose', action='store_true',
+           help='Be verbose (more output).')
+        sub = p.add_subparsers(title='Actions')
+        cls.register_develop(sub)
+        cls.register_release(sub)
+        cls.register_master(sub)
+
+    #- develop
+    @classmethod
+    def register_develop(cls, parent):
+        p = parent.add_parser('develop', help='Deploy the develop branch.')
+        p.set_defaults(func=cls.run_develop)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+
+    @staticmethod
+    def run_develop(args):
+        args.branch = GitFlow().develop_name()
+        DeployCommand._run_deploy(args)
+
+    #- release
+    @classmethod
+    def register_release(cls, parent):
+        p = parent.add_parser('release', help='Deploy a release branch.')
+        p.set_defaults(func=cls.run_release)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-C', '--no-check', action='store_true',
+                help="Do not perform any checking before deployment.")
+        p.add_argument('version', action=NotEmpty, metavar='VERSION',
+                help="Release to be deployed.")
+        p.add_argument('environ', action=NotEmpty, metavar='ENVIRON',
+                help="Environment to deploy into. " \
+                     "Must be one of 'qa' or 'client'.")
+
+    @staticmethod
+    def run_release(args):
+        assert args.version
+        assert args.environ
+        pivotal.check_version_format(args.version)
+
+        args.branch = GitFlow().managers['release'].full_name(args.version)
+
+        if args.environ not in ('qa', 'client'):
+            raise jenkins.DeploymentRequestError(args.branch, args.environ)
+
+        if args.environ == 'client' and not args.no_check:
+            #+++ Check if all stories were accepted by the client
+            pt_release = pivotal.Release(args.version)
+            print('Checking Pivotal Tracker stories ... ')
+            pt_release.try_finish()
+            print('OK')
+
+            #+++ Check all relevant review requests in Review Board, to be sure
+            rb_release = review.Release(pt_release)
+            print('Checking if all relevant stories have been reviewed ... ')
+            rb_release.try_finish(args.ignore_missing_reviews)
+            print('OK')
+
+        DeployCommand._run_deploy(args)
+
+    #- master
+    @classmethod
+    def register_master(cls, parent):
+        p = parent.add_parser('master', help='Deploy the master branch.')
+        p.set_defaults(func=cls.run_master)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+
+    @staticmethod
+    def run_master(args):
+        args.branch = GitFlow().master_name()
+        args.environ = 'production'
+        DeployCommand._run_deploy(args)
+
+    #- deploy helper method
+    @staticmethod
+    def _run_deploy(args):
+        assert args.branch
+        assert args.environ
+        gitflow = GitFlow()
+
+        # Fetch remote refs.
+        if not args.no_fetch:
+            sys.stderr.write('Fetching origin ... ')
+            gitflow.origin().fetch()
+            print('OK')
+
+        # Make sure that the branch being deployed exists in origin.
+        sys.stderr.write("Checking if origin branch '{0}' exists ... " \
+                         .format(args.branch))
+        branch = gitflow.require_origin_branch(args.branch)
+        print('OK')
+
+        # Trigger the job.
+        jenkins = Jenkins.from_prompt()
+        print('Triggering the deployment job (env being {0}) ... job {1} ... ' \
+                .format(args.environ, jenkins.get_deploy_job_name()))
+        cause = 'Trigger by ' + gitflow.get('user.name') + \
+            ' using the GitFlow plugin'
+        url = jenkins.get_url_for_next_invocation()
+        invocation = jenkins.trigger_deploy_job(args.branch, args.environ, cause)
+        print('The job has been enqueued. You can visit\n\n\t{0}\n\n' \
+                'to see the progress.'.format(url))
 
 
 def main():

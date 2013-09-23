@@ -356,6 +356,19 @@ class FeatureBranchManager(BranchManager):
         if push:
             gitflow.origin().push(to_push)
 
+    def base_marker_name(self, feature):
+        gitflow = self.gitflow
+
+        marker = 'base_' + gitflow.get_prefix(self.identifier)
+        feature = feature[len(gitflow.get_prefix(self.identifier)):]
+        for c in feature:
+            if '0' <= c <= '9':
+                marker += c
+            else:
+                break
+
+        return marker
+
 
 class ReleaseBranchManager(BranchManager):
     identifier = 'release'
@@ -421,9 +434,17 @@ class ReleaseBranchManager(BranchManager):
 
         to_push = [self.gitflow.develop_name(), self.gitflow.master_name()]
 
-        self.merge(name, self.gitflow.master_name(),
-                'Finished %s %s.' % (self.identifier, name))
+        # Merge release into develop.
+        self.merge(name, self.gitflow.develop_name(),
+                'Finished {0} {1} (merge into {2})' \
+                .format(self.identifier, name, self.gitflow.develop_name()))
 
+        # Merge release into master.
+        self.merge(name, self.gitflow.master_name(),
+                'Finished {0} {1} (merge into {2})' \
+                .format(self.identifier, name, self.gitflow.master_name()))
+
+        # Tag master.
         tag = None
         if tagging_info is not None:
             # try to tag the release
@@ -436,13 +457,6 @@ class ReleaseBranchManager(BranchManager):
                         **tagging_info)
             to_push.append(tagname)
 
-        # merge the master branch back into develop; this makes the
-        # master branch - and the new tag (if provided) - a parent of
-        # the development branch, which in turn lets you use 'git
-        # describe' on either branch
-        self.merge(tag or self.gitflow.master(),
-                   self.gitflow.develop_name(),
-                   'Finished %s %s.' % (self.identifier, name))
         if not keep:
             self.delete(name, force=force_delete)
             to_push.append(':'+full_name)

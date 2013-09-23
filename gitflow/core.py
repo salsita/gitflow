@@ -334,13 +334,26 @@ Git config '%s' missing, please fill it in by executing
                         err = e
                         # If we are in '_get_fetch_info_from_stderr',
                         # it's the broken assertion and we skip it.
-                        func_name = traceback.extract_stack()[-1].frame[2]
+                        func_name = traceback.extract_stack()[-1][2]
                         if func_name != '_get_fetch_info_from_stderr':
                             raise e
+                        err = None
                 # If we somehow get the same exception 3 times, just raise anyway.
                 raise err
 
         return RemoteWrapper(remote)
+
+    @requires_repo
+    def require_origin_branch(self, branch_name):
+        origin_name = self.origin_name(branch_name)
+        refs = [r
+                for r in self.repo.refs
+                if isinstance(r, RemoteReference) and r.name == origin_name]
+        if len(refs) != 0:
+            assert len(refs) == 1
+            return refs[0]
+        raise NoSuchBranchError(
+                "Remote branch '{0}' was not found".format(origin_name))
 
     def origin(self):
         return self.require_remote(self.origin_name())
@@ -520,7 +533,7 @@ Git config '%s' missing, please fill it in by executing
             commit1 = self.repo.rev_parse(branch1)
             commit2 = self.repo.rev_parse(branch2)
         except git.BadObject, e:
-            raise NoSuchBranchError(e.args[0])
+            raise NoSuchBranchError('Branch {0} not found'.format(e.args[0]))
         if commit1 == commit2:
             return 0
         try:
@@ -817,6 +830,7 @@ Git config '%s' missing, please fill it in by executing
         # configure remote tracking
         repo.branches[full_name].set_tracking_branch(info.remote_ref)
 
+        return full_name
 
     @requires_initialized
     def pull(self, identifier, remote, name):
