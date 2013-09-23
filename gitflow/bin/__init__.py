@@ -512,8 +512,8 @@ class ReleaseCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_start)
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the QA environment upon release start.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the QA environment upon release start.')
         p.add_argument('version', action=NotEmpty)
 
     @staticmethod
@@ -578,7 +578,7 @@ class ReleaseCommand(GitFlowCommand):
         gitflow.checkout('release', release.get_version())
 
         #+ Deploy to the QA environment.
-        if not args.no_deploy:
+        if args.deploy:
             # args.version is already set, set args.environ as well.
             args.environ = 'qa'
             args.no_fetch = True
@@ -604,8 +604,8 @@ class ReleaseCommand(GitFlowCommand):
                        help='Just print a warning if there is no review for '
                             'a feature branch that is assigned to this release,'
                             ' do not fail.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the client staging environment.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the client staging environment.')
         p.add_argument('version', action=NotEmpty, help="Release to finish.")
 
     @staticmethod
@@ -631,7 +631,7 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         # Trigger the deployment job
-        if not args.no_deploy:
+        if args.deploy:
             args.environ = 'client'
             args.no_check = True
             DeployCommand.run_release(args)
@@ -644,8 +644,8 @@ class ReleaseCommand(GitFlowCommand):
         # fetch by default
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
-        p.add_argument('-D', '--no-deploy', action='store_true',
-                help='Do not deploy to the production environment upon release finish.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the production environment upon release finish.')
         # push by default
         p.add_argument('-P', '--no-push', action='store_true',
                        #:todo: get "origin" from config
@@ -762,7 +762,7 @@ class ReleaseCommand(GitFlowCommand):
         print '    OK'
 
         #+++ Trigger the deploy job
-        if not args.no_deploy:
+        if args.deploy:
             # The checks were already performed, skip them.
             args.no_check = True
             DeployCommand.run_master(args)

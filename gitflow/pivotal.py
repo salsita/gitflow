@@ -262,7 +262,7 @@ class Release(object):
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
     def finish(self):
-        print 'Following stories were delivered to the client %s:' \
+        print 'Following stories were delivered for client acceptance as of release %s:' \
               % self._version
         for story in self:
             story.deliver()
