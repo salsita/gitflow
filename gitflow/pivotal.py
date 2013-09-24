@@ -154,7 +154,9 @@ class Story(object):
     #+++ Bug- & Feature-specific stuff
     def finish(self):
         assert self.is_feature() or self.is_bug()
-        if self.get_state() != 'started':
+        if self.is_finished():
+            return
+        if not self.is_started():
             raise StatusError('Feature not started: ' + str(self.get_id()))
         self.set_state('finished')
 
@@ -164,7 +166,9 @@ class Story(object):
 
     def deliver(self):
         assert self.is_feature() or self.is_bug()
-        if self.get_state() != 'finished':
+        if self.is_delivered():
+            return
+        if not self.is_finished():
             raise StatusError('Feature not finished: ' + str(self.get_id()))
         self.set_state('delivered')
 
@@ -292,10 +296,10 @@ class Release(object):
                 if story.is_feature() and story.get_estimate() == 0:
                     continue
                 err = True
-                print "    Story not QA'd: " + story.get_url()
+                print("    Story not QA'd: " + story.get_url())
             if story.is_labeled('point me'):
                 err = True
-                print "    Story labeled 'point me': " + story.get_url()
+                print("    Story labeled 'point me': " + story.get_url())
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
@@ -303,7 +307,10 @@ class Release(object):
         print 'Following stories were delivered for client acceptance as of release %s:' \
               % self._version
         for story in self:
-            story.deliver()
+            if not story.is_delivered() \
+                    and not story.is_accepted() \
+                    and not story.is_rejected():
+                story.deliver()
             sys.stdout.write('    ')
             story.dump()
 
