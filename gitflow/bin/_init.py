@@ -43,6 +43,9 @@ def _ensure_SSH():
                         .format(gitflow_origin))
     if re.match('(https?://|git://)', origin_url):
         raise IllegalCommunicationProtocol("Only SSH remotes are supported.")
+    if origin_url.startswith('ssh://'):
+        origin_url = origin_url[6:].replace('/', ':', 1)
+        CoreGitFlow().git.remote('set-url', gitflow_origin, origin_url)
 
 class GitFlow(CoreGitFlow):
 
