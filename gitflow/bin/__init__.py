@@ -194,6 +194,11 @@ class FeatureCommand(GitFlowCommand):
 
         [story, name] = pivotal.prompt_user_to_select_story()
 
+        if args.for_release is not None:
+            sys.stdout.write('Assigning the chosen story to release {0}'.format(args.for_release))
+            story.assign_to_release(args.for_release)
+            print('OK')
+
         if story.is_rejected():
             sid = str(story.get_id())
             gitflow.start_transaction('restart story {0}'.format(sid))
@@ -228,9 +233,9 @@ class FeatureCommand(GitFlowCommand):
         git.branch(base_marker, base)
         print('OK')
 
-        if args.for_release is not None:
-            story.assign_to_release(args.for_release)
+        sys.stdout.write('Updating Pivotal Tracker ... ')
         story.start()
+        print('OK')
 
         print
         print "Summary of actions:"
