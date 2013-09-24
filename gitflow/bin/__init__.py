@@ -199,7 +199,7 @@ class FeatureCommand(GitFlowCommand):
         print('OK')
 
         if args.for_release is not None:
-            sys.stdout.write('Assigning the chosen story to release {0}'.format(args.for_release))
+            sys.stdout.write('Assigning the chosen story to release {0} ... '.format(args.for_release))
             story.assign_to_release(args.for_release)
             print('OK')
 
