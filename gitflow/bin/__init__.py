@@ -1015,6 +1015,10 @@ class DeployCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_release)
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
         p.add_argument('-C', '--no-check', action='store_true',
                 help="Do not perform any checking before deployment.")
         p.add_argument('version', action=NotEmpty, metavar='VERSION',
