@@ -401,7 +401,17 @@ Git config '%s' missing, please fill it in by executing
             else:
                 raise NoSuchBranchError('The current branch is no %s branch. '
                     'Please specify one explicitly.' % identifier)
-        return manager.shorten(manager.by_name_prefix(prefix).name)
+        b = None
+        try:
+            b = manager.by_name_prefix(prefix).name
+        except NoSuchBranchError as ex:
+            try:
+                remote_b = manager.by_name_prefix(prefix, remote=True).name
+                b = str(remote_b)[len(self.origin_name())+1:]
+                self.git.branch(b, remote_b)
+            except NoSuchBranchError:
+                raise ex
+        return manager.shorten(b)
 
     @requires_repo
     def name_or_current(self, identifier, name, must_exist=True):
