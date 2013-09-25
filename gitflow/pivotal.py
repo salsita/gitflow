@@ -1,4 +1,5 @@
 from gitflow.core import GitFlow
+import httplib2
 import busyflow.pivotal as pt
 import string
 from colorama import Style
@@ -7,11 +8,14 @@ init()
 import sys
 import re
 import itertools
+import json
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
                                 ReleaseAlreadyAssigned, IllegalVersionFormat,
                                 StatusError, NoSuchBranchError)
 
+
+PT_V5_ENDPOINT = 'https://www.pivotaltracker.com/services/v5'
 
 _gitflow = GitFlow()
 
@@ -22,6 +26,9 @@ def check_version_format(version):
 
 def _get_version_matcher():
     return _gitflow._safe_get('gitflow.release.versionmatcher')
+
+def _get_token():
+    return _gitflow._safe_get('gitflow.pt.token')
 
 def _get_client():
     return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))
@@ -113,10 +120,43 @@ class Story(object):
     def is_unstarted(self):
         return self.get_state() == 'unstarted'
 
+    def set_me_as_owner(self):
+        headers = {'X-TrackerToken': _get_token()}
+
+        # Download /me
+        endpoint = PT_V5_ENDPOINT + '/me'
+        resp, content = httplib2.Http().request(
+                endpoint,
+                headers=headers)
+        if resp.status != 200:
+            raise OperationsError('failed to get Pivotal Tracker /me')
+
+        # Decode my ID
+        my_id = None
+        try:
+            my_id = json.loads(content)['id']
+        except ValueError:
+            raise OperationsError('failed to decode Pivotal Tracker /me response')
+
+        # Set my ID as the owner of this story
+        endpoint = '{0}/projects/{1}/stories/{2}' \
+                   .format(PT_V5_ENDPOINT, _get_project_id(), self.get_id())
+        req_content = json.dumps({'owned_by_id': my_id})
+        headers['Content-Type'] = 'application/json'
+        rep, rep_content = httplib2.Http().request(
+                endpoint,
+                body=req_content,
+                method='PUT',
+                headers=headers)
+        if rep.status != 200:
+            raise OperationsError('failed to set me as the story owner')
+
     #+++ Bug- & Feature-specific stuff
     def finish(self):
         assert self.is_feature() or self.is_bug()
-        if self.get_state() != 'started':
+        if self.is_finished():
+            return
+        if not self.is_started():
             raise StatusError('Feature not started: ' + str(self.get_id()))
         self.set_state('finished')
 
@@ -126,7 +166,9 @@ class Story(object):
 
     def deliver(self):
         assert self.is_feature() or self.is_bug()
-        if self.get_state() != 'finished':
+        if self.is_delivered():
+            return
+        if not self.is_finished():
             raise StatusError('Feature not finished: ' + str(self.get_id()))
         self.set_state('delivered')
 
@@ -254,10 +296,10 @@ class Release(object):
                 if story.is_feature() and story.get_estimate() == 0:
                     continue
                 err = True
-                print "    Story not QA'd: " + story.get_url()
+                print("    Story not QA'd: " + story.get_url())
             if story.is_labeled('point me'):
                 err = True
-                print "    Story labeled 'point me': " + story.get_url()
+                print("    Story labeled 'point me': " + story.get_url())
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
@@ -265,7 +307,10 @@ class Release(object):
         print 'Following stories were delivered for client acceptance as of release %s:' \
               % self._version
         for story in self:
-            story.deliver()
+            if not story.is_delivered() \
+                    and not story.is_accepted() \
+                    and not story.is_rejected():
+                story.deliver()
             sys.stdout.write('    ')
             story.dump()
 

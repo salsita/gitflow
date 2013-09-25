@@ -194,6 +194,18 @@ class FeatureCommand(GitFlowCommand):
 
         [story, name] = pivotal.prompt_user_to_select_story()
 
+        sys.stdout.write('Setting myself as the story owner ... ')
+        try:
+            story.set_me_as_owner()
+        except:
+            print('FAIL')
+        print('OK')
+
+        if args.for_release is not None:
+            sys.stdout.write('Assigning the chosen story to release {0} ... '.format(args.for_release))
+            story.assign_to_release(args.for_release)
+            print('OK')
+
         if story.is_rejected():
             sid = str(story.get_id())
             gitflow.start_transaction('restart story {0}'.format(sid))
@@ -228,9 +240,9 @@ class FeatureCommand(GitFlowCommand):
         git.branch(base_marker, base)
         print('OK')
 
-        if args.for_release is not None:
-            story.assign_to_release(args.for_release)
+        sys.stdout.write('Updating Pivotal Tracker ... ')
         story.start()
+        print('OK')
 
         print
         print "Summary of actions:"
@@ -1010,6 +1022,10 @@ class DeployCommand(GitFlowCommand):
         p.set_defaults(func=cls.run_release)
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
+                       help='Just print a warning if there is no review for '
+                            'a feature branch that is assigned to this release,'
+                            ' do not fail.')
         p.add_argument('-C', '--no-check', action='store_true',
                 help="Do not perform any checking before deployment.")
         p.add_argument('version', action=NotEmpty, metavar='VERSION',
