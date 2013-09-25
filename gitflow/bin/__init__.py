@@ -195,11 +195,14 @@ class FeatureCommand(GitFlowCommand):
         [story, name] = pivotal.prompt_user_to_select_story()
 
         sys.stdout.write('Setting myself as the story owner ... ')
-        story.set_me_as_owner()
+        try:
+            story.set_me_as_owner()
+        except:
+            print('FAIL')
         print('OK')
 
         if args.for_release is not None:
-            sys.stdout.write('Assigning the chosen story to release {0}'.format(args.for_release))
+            sys.stdout.write('Assigning the chosen story to release {0} ... '.format(args.for_release))
             story.assign_to_release(args.for_release)
             print('OK')
 
