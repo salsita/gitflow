@@ -9,7 +9,7 @@ repository operations for Vincent Driessen's branching model.
 # Distributed under a BSD-like license. For full terms see the file LICENSE.txt
 #
 
-VERSION = (1, 1, 0)
+VERSION = (1, 1, 1)
 
 __version__ = ".".join(map(str, VERSION[0:3])) + "".join(VERSION[3:])
 __author__ = "Ondrej Kupka, Tomas Brambora, Hartmut Goebelm, Vincent Driessen"
