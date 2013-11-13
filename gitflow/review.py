@@ -225,6 +225,10 @@ class Release(object):
         err = None
 
         for story in self._stories:
+            if story.is_labeled('no review'):
+                print "    'no review' PT label found, skipping..."
+                continue
+
             prefix = feature_prefix + str(story.get_id())
             try:
                 reviews_expected += 1
