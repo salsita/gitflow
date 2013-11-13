@@ -62,7 +62,13 @@ def _iter_backlog_stories():
                 yield s
 
 def _iter_stories():
-    return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
+    label = _gitflow.get('gitflow.pt.label', None)
+    for s in itertools.chain(_iter_current_stories(), _iter_backlog_stories()):
+        if label and not s.is_labeled(label):
+            continue
+        if not label and s.has_label_matching(PT_LABEL_PREFIX):
+            continue
+        yield s
 
 def list_projects():
     projects = _get_client().projects.all()['projects']
