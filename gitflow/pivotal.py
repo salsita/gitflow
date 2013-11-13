@@ -16,6 +16,7 @@ from gitflow.exceptions import (NotInitialized, GitflowError,
 
 
 PT_V5_ENDPOINT = 'https://www.pivotaltracker.com/services/v5'
+PT_LABEL_PREFIX = 'repo-'
 
 _gitflow = GitFlow()
 
@@ -106,6 +107,10 @@ class Story(object):
 
     def is_labeled(self, label):
         return label in self.get_labels()
+
+    def has_label_matching(self, pattern):
+        m = re.compile(pattern)
+        return any([label for label in self.get_labels() if m.match(label)])
 
     def add_comment(self, comment):
         self._client.stories.add_comment(
@@ -270,6 +275,7 @@ class Release(object):
     def __init__(self, version, _skip_story_download=False):
         check_version_format(version)
         self._version = version
+        self._label = _gitflow.get('gitflow.pt.label', None)
         if _skip_story_download:
             return
         self._current_stories = list(_iter_current_stories())
@@ -277,7 +283,16 @@ class Release(object):
     def __iter__(self):
         for story in self._current_stories:
             if story.is_labeled('release-' + self._version):
-                yield story
+                if self._label:
+                    # If the lable is defined, pick only the stories labeled
+                    # with that particular lable.
+                    if story.is_labeled(self._label):
+                        yield story
+                else:
+                    # Otherwise pick only the stories not labeled with any repo
+                    # label. That means that we are in the 'default' repository.
+                    if not story.has_label_matching(PT_LABEL_PREFIX):
+                        yield story
 
     def get_version(self):
         assert self._version
@@ -332,6 +347,10 @@ class Release(object):
 
     def iter_candidates(self):
         for story in self._current_stories:
+            if self._label and not story.is_labeled(self._label):
+                continue
+            if not self._label and story.has_label_matching(PT_LABEL_PREFIX):
+                continue
             if (story.is_feature() or story.is_bug()) \
                     and story.is_finished() \
                     and story.get_release() is None:
