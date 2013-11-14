@@ -61,6 +61,8 @@ def _iter_backlog_stories():
                 yield s
 
 def _iter_stories():
+    # Load the PT include/exclude labels from git config.
+    # Use string.lower() since PT labels are case insensitive.
     include = _gitflow.get('gitflow.pt.includelabel', None)
     if include is not None:
         include = include.lower()
@@ -120,10 +122,6 @@ class Story(object):
 
     def is_labeled(self, label):
         return label in self.get_labels()
-
-    def has_label_matching(self, pattern):
-        m = re.compile(pattern)
-        return any([label for label in self.get_labels() if m.match(label)])
 
     def add_comment(self, comment):
         self._client.stories.add_comment(
@@ -290,7 +288,7 @@ class Release(object):
         self._version = version
 
         # Load the PT include/exclude labels from git config.
-        # User string.lower() since PT labels are case insensitive.
+        # Use string.lower() since PT labels are case insensitive.
         self._include_label = _gitflow.get('gitflow.pt.includelabel', None)
         if self._include_label is not None:
             self._include_label = self._include_label.lower()
