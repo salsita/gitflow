@@ -310,8 +310,7 @@ class Release(object):
                         # If the lable is defined, pick only the stories labeled
                         # with that particular lable.
                         yield story
-                    else:
-                        continue
+                    continue
                 if self._exclude_labels and \
                         any([l for l in self._exclude_labels if story.is_labeled(l)]):
                     # If the story contains any of the exclude labels, skip it.
