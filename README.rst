@@ -57,7 +57,9 @@ Global (same for all projects)::
 
 * git config --global reviewboard.url https://example.com/rb/ (the trailing slash is REQUIRED)
 * git config --global reviewboard.server https://example.com/rb/
-* git config --global gitflow.pt.token 12345678910
+* git config --global gitflow.pt.token <YOUR PIVOTAL TRACKER TOKEN>
+
+(Fill in your Pivotal Tracker token and ReviewBoard URLs.)
 
 You will be prompted for the project-specific settings during ``git flow init`` or other commands when the need arises.
 
