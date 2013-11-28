@@ -151,11 +151,16 @@ def _ask_pt_projid(reuse_existing):
     pick('gitflow.pt.projectid', 'Pivotal Tracker projects', pt.list_projects,
          reuse_existing=reuse_existing)
 
-def _ask_pt_label(reuse_existing):
-    is_valid = lambda answer: not answer or answer.startswith('repo-')
-    ask('gitflow.pt.label',
-        'Pivotal Tracker label to associate this repository with: ',
-        is_valid=is_valid, reuse_existing=reuse_existing)
+def _ask_pt_labels(reuse_existing):
+    include = ask('gitflow.pt.includelabel',
+                  'Pivotal Tracker label to associate this repository with: ',
+                  reuse_existing=reuse_existing)
+    if include:
+        gitflow.set('gitflow.pt.excludelabels', '')
+        return
+    ask('gitflow.pt.excludelabels',
+        'Pivotal Tracker lables to exclude from this repository: ',
+        reuse_existing=reuse_existing)
 
 def _ask_rb_repoid(reuse_existing):
     pick('gitflow.rb.repoid', 'Review Board repositories', rb.list_repos,
@@ -215,7 +220,7 @@ def run_default(args):
             'Regular expression for matching release numbers')
 
     _ask_pt_projid(args.use_defaults)
-    _ask_pt_label(args.use_defaults)
+    _ask_pt_labels(args.use_defaults)
     _ask_rb_repoid(args.use_defaults)
 
     # assert the gitflow repo has been correctly initialized
