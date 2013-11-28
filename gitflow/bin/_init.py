@@ -20,7 +20,7 @@ except:
     pass
 
 from gitflow.core import GitFlow as CoreGitFlow, warn, info
-from gitflow.prompt import pick
+from gitflow.prompt import pick, ask
 
 from gitflow.exceptions import (AlreadyInitialized, NotInitialized,
                                 NoSuchLocalBranchError, NoSuchBranchError,
@@ -147,11 +147,24 @@ def _ask_name(args, name, question):
     if not gitflow.get(name, None) or args.force:
         _ask_config(args, name, question)
 
-def _ask_pt_projid():
-    pick('gitflow.pt.projectid', 'Pivotal Tracker projects', pt.list_projects)
+def _ask_pt_projid(reuse_existing):
+    pick('gitflow.pt.projectid', 'Pivotal Tracker projects', pt.list_projects,
+         reuse_existing=reuse_existing)
 
-def _ask_rb_repoid():
-    pick('gitflow.rb.repoid', 'Review Board repositories', rb.list_repos)
+def _ask_pt_labels(reuse_existing):
+    include = ask('gitflow.pt.includelabel',
+                  'Pivotal Tracker label to associate this repository with: ',
+                  reuse_existing=reuse_existing)
+    if include:
+        gitflow.set('gitflow.pt.excludelabels', '')
+        return
+    ask('gitflow.pt.excludelabels',
+        'Pivotal Tracker lables to exclude from this repository: ',
+        reuse_existing=reuse_existing)
+
+def _ask_rb_repoid(reuse_existing):
+    pick('gitflow.rb.repoid', 'Review Board repositories', rb.list_repos,
+         reuse_existing=reuse_existing)
 
 def run_default(args):
     global gitflow
@@ -206,8 +219,9 @@ def run_default(args):
     _ask_name(args, 'release.versionmatcher',
             'Regular expression for matching release numbers')
 
-    _ask_pt_projid()
-    _ask_rb_repoid()
+    _ask_pt_projid(args.use_defaults)
+    _ask_pt_labels(args.use_defaults)
+    _ask_rb_repoid(args.use_defaults)
 
     # assert the gitflow repo has been correctly initialized
     assert gitflow.is_initialized()

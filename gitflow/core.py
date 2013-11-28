@@ -28,6 +28,10 @@ from gitflow.exceptions import (NotInitialized, BranchExistsError,
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
 
+
+# A magic string to be used for encoding '-' in git config.
+MAGIC_STRING = 'dKkvQvtBsd9DkQfMJkya'
+
 def datetime_to_timestamp(d):
     return time.mktime(d.timetuple()) + d.microsecond / 1e6
 
@@ -252,7 +256,13 @@ Git config '%s' missing, please fill it in by executing
     def get(self, setting, default=_NONE):
         section, option = self._parse_setting(setting)
         try:
-            return self.repo.config_reader().get_value(section, option)
+            value = self.repo.config_reader().get_value(section, option)
+            # git config value cannot contain '-', so it is encoded as
+            # MAGIC_STRING and we have to replace it with '-' when we read a
+            # value.
+            if isinstance(value, basestring):
+                value = value.replace(MAGIC_STRING, '-')
+            return value
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
             if default is not _NONE:
                 return default
@@ -263,6 +273,9 @@ Git config '%s' missing, please fill it in by executing
 
     @requires_repo
     def set(self, setting, value):
+        # git config value cannot contain '-', so we have to encode it.
+        if isinstance(value, basestring):
+            value = value.replace('-', MAGIC_STRING)
         section, option = self._parse_setting(setting)
         self.repo.config_writer().set_value(section, option, value)
 

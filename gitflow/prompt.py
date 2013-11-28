@@ -2,38 +2,45 @@ import ConfigParser
 import getpass
 import sys
 
-from .core import GitFlow
+from .core import GitFlow, MAGIC_STRING
 
-MAGIC_STRING = 'dKkvQvtBsd9DkQfMJkya'
+def ask(option, question, set_globally=False, secret=False, is_valid=None,
+        reuse_existing=True):
 
-def ask(option, question, set_globally=False, secret=False):
     gitflow = GitFlow()
     git = gitflow.repo.git
 
     answer = None
-    while not answer:
-        try:
-            answer = gitflow.get(option)
-            if isinstance(answer, basestring):
-                answer = answer.replace(MAGIC_STRING, '-')
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-            while not answer:
-                if secret:
-                    answer = getpass.getpass(question)
-                else:
-                    answer = raw_input(question)
-            raw_answer = answer.replace('-', MAGIC_STRING)
-            if set_globally:
-                git.config('--global', option, raw_answer)
+    try:
+        if not reuse_existing:
+            raise ConfigParser.NoOptionError(option, 'Not using the existing value')
+
+        answer = gitflow.get(option)
+        if isinstance(answer, basestring):
+            answer = answer.replace(MAGIC_STRING, '-')
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        while True:
+            if secret:
+                answer = getpass.getpass(question)
             else:
-                gitflow.set(option, raw_answer)
-    assert answer
+                answer = raw_input(question)
+            if is_valid is None or is_valid(answer):
+                break
+
+        raw_answer = answer.replace('-', MAGIC_STRING)
+        if set_globally:
+            git.config('--global', option, raw_answer)
+        else:
+            gitflow.set(option, raw_answer)
     return answer
 
-def pick(option, title, source):
+def pick(option, title, source, reuse_existing=True):
     # Try to get the option from config first.
     gitflow = GitFlow()
     try:
+        if not reuse_existing:
+            raise ConfigParser.NoOptionError(option, 'Not using the existing value')
+
         opt = gitflow.get(option)
         if isinstance(opt, basestring):
             opt = opt.replace(MAGIC_STRING, '-')

@@ -61,7 +61,23 @@ def _iter_backlog_stories():
                 yield s
 
 def _iter_stories():
-    return itertools.chain(_iter_current_stories(), _iter_backlog_stories())
+    # Load the PT include/exclude labels from git config.
+    # Use string.lower() since PT labels are case insensitive.
+    include = _gitflow.get('gitflow.pt.includelabel', None)
+    if include is not None:
+        include = include.lower()
+
+    exclude = _gitflow.get('gitflow.pt.excludelabels', None)
+    if exclude is not None:
+        exclude = exclude.lower()
+        exclude = exclude.split(',')
+
+    for s in itertools.chain(_iter_current_stories(), _iter_backlog_stories()):
+        if include and not s.is_labeled(include):
+            continue
+        if exclude and any([l for l in exclude if s.is_labeled(l)]):
+            continue
+        yield s
 
 def list_projects():
     projects = _get_client().projects.all()['projects']
@@ -270,6 +286,18 @@ class Release(object):
     def __init__(self, version, _skip_story_download=False):
         check_version_format(version)
         self._version = version
+
+        # Load the PT include/exclude labels from git config.
+        # Use string.lower() since PT labels are case insensitive.
+        self._include_label = _gitflow.get('gitflow.pt.includelabel', None)
+        if self._include_label is not None:
+            self._include_label = self._include_label.lower()
+
+        self._exclude_labels = _gitflow.get('gitflow.pt.excludelables', None)
+        if self._exclude_labels is not None:
+            self._exclude_labels = self._exclude_labels.lower()
+            self._exclude_labels = self._exclude_labels.split(',')
+
         if _skip_story_download:
             return
         self._current_stories = list(_iter_current_stories())
@@ -277,6 +305,19 @@ class Release(object):
     def __iter__(self):
         for story in self._current_stories:
             if story.is_labeled('release-' + self._version):
+                if self._include_label:
+                    if story.is_labeled(self._include_label):
+                        # If the lable is defined, pick only the stories labeled
+                        # with that particular lable.
+                        yield story
+                    continue
+                if self._exclude_labels and \
+                        any([l for l in self._exclude_labels if story.is_labeled(l)]):
+                    # If the story contains any of the exclude labels, skip it.
+                    continue
+                # The include label is not defined and the story is not matching
+                # any of the exclude labels, if defined, so here we can just
+                # safely yield the story.
                 yield story
 
     def get_version(self):
@@ -332,6 +373,13 @@ class Release(object):
 
     def iter_candidates(self):
         for story in self._current_stories:
+            if self._include_label and not story.is_labeled(self._include_label):
+                # Not labeled with the include label, skip it.
+                continue
+            if self._exclude_labels and \
+                    any([l for l in self._exclude_labels if story.is_labeled(l)]):
+                # Labeled with an exclude label, skip it.
+                continue
             if (story.is_feature() or story.is_bug()) \
                     and story.is_finished() \
                     and story.get_release() is None:
