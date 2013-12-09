@@ -657,6 +657,16 @@ class ReleaseCommand(GitFlowCommand):
             args.no_check = True
             DeployCommand.run_release(args)
 
+        print
+        print "Follow-up actions:"
+        print "- Deliver your project to the client staging environment."
+        print "- Wait for the client to accept all the stories."
+        print "- When all is done, run"
+        print
+        print "     git flow release deliver", args.version
+        print
+        print "  which will perform the final merge, tagging and cleanup."
+
     #- deliver
     @classmethod
     def register_deliver(cls, parent):
