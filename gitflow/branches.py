@@ -398,7 +398,7 @@ class ReleaseBranchManager(BranchManager):
         gitflow = self.gitflow
         git = gitflow.git
 
-        # there must be no active `release` branch other than the one requested
+        # there must be no active `release` branch
         if len(self.list()) > 0:
             raise BranchTypeExistsError(self.identifier)
 
