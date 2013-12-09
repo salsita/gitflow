@@ -661,3 +661,44 @@ def show_release_summary(gitflow):
     #    if blockers:
     #        print "Story '%s' is blocked by stories: %s" % (story, blockers)
     #import ipdb; ipdb.set_tracce()
+
+
+def prompt_user_to_confirm_release(version):
+    release = Release(version)
+    any_assigned = False
+    print
+    print 'Stories already assigned to this release:'
+    for story in release:
+        sys.stdout.write('    ')
+        story.dump()
+        any_assigned = True
+    if not any_assigned:
+        print '    None'
+    print
+    any_candidate = False
+    any_pointme = False
+    print 'Stories to be newly assigned to this release:'
+    for story in release.iter_candidates():
+        if story.is_labeled('point me'):
+            sys.stdout.write('PM  ')
+            any_pointme = True
+        else:
+            sys.stdout.write('    ')
+        story.dump()
+        any_candidate = True
+    if not any_candidate:
+        print '    None'
+    print
+
+    if not any_candidate:
+        raise SystemExit('No new stories to be added to the release,' \
+                'aborting...')
+
+    if any_pointme:
+        raise PointMeError("Some stories are labeled with the 'point me' label")
+
+    if not release.prompt_for_confirmation():
+        raise SystemExit('Aborting...')
+
+def start_release(version):
+    Release(version).start()

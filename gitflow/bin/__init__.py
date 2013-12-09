@@ -479,6 +479,7 @@ class ReleaseCommand(GitFlowCommand):
         cls.register_list(sub)
         cls.register_list_stories(sub)
         cls.register_start(sub)
+        cls.register_append(sub)
         cls.register_finish(sub)
         cls.register_deliver(sub)
         cls.register_track(sub)
@@ -534,43 +535,8 @@ class ReleaseCommand(GitFlowCommand):
         base = gitflow.develop_name()
 
         #+ Pivotal Tracker modifications.
-        release = pivotal.Release(args.version)
-        any_assigned = False
-        print
-        print 'Stories already assigned to this release:'
-        for story in release:
-            sys.stdout.write('    ')
-            story.dump()
-            any_assigned = True
-        if not any_assigned:
-            print '    None'
-        print
-        any_candidate = False
-        any_pointme = False
-        print 'Stories to be newly assigned to this release:'
-        for story in release.iter_candidates():
-            if story.is_labeled('point me'):
-                sys.stdout.write('PM  ')
-                any_pointme = True
-            else:
-                sys.stdout.write('    ')
-            story.dump()
-            any_candidate = True
-        if not any_candidate:
-            print '    None'
-        print
-
-        if not any_candidate:
-            raise SystemExit('No new stories to be added to the release,' \
-                    'aborting...')
-
-        if any_pointme:
-            raise PointMeError("Some stories are labeled with the 'point me' label")
-
-        if not release.prompt_for_confirmation():
-            raise SystemExit('Aborting...')
-
-
+        pivotal.prompt_user_to_confirm_release(args.version)
+        
         #+ Git modifications.
         sys.stdout.write('Creating release branch (base being %s) ... ' \
                          % base)
@@ -586,7 +552,7 @@ class ReleaseCommand(GitFlowCommand):
             die("could not create release branch %r" % args.version, e)
         print 'OK'
 
-        release.start()
+        pivotal.start_release(args.version)
         gitflow.checkout('release', release.get_version())
 
         #+ Deploy to the QA environment.
@@ -605,6 +571,49 @@ class ReleaseCommand(GitFlowCommand):
         print "     git flow release finish", args.version
         print
 
+    #- append
+    @classmethod
+    def register_append(cls, parent):
+        p = parent.add_parser('append', help='Append stories to an existing release.')
+        p.set_defaults(func=cls.run_append)
+        p.add_argument('-F', '--no-fetch', action='store_true',
+                help='Do not fetch from origin before performing local operation.')
+        p.add_argument('-d', '--deploy', action='store_true',
+                help='Do deploy to the QA environment upon release start.')
+        p.add_argument('version', action=NotEmpty)
+
+    @staticmethod
+    def run_append(args):
+        # Print info and ask for confirmation.
+        pivotal.prompt_user_to_confirm_release(args.version)
+
+        # Merge, push and insert PT labels.
+        gitflow = GitFlow()
+        git = gitflow.git
+        current_branch = gitflow.repo.active_branch
+
+        develop = gitflow.develop_name()
+        gitflow.name_or_current('release', args.version)
+        release = gitflow.get_prefix('release') + str(args.version)
+
+        print('')
+        sys.stdout.write('Merging develop into ' + release + ' ... ')
+        gitflow.checkout('release', str(args.version))
+        git.merge(gitflow.develop_name())
+        print('OK')
+
+        sys.stdout.write('Pushing ' + release + ' ... ')
+        gitflow.origin().push([release])
+        print('OK')
+
+        sys.stdout.write('Moving back to ' + str(current_branch) + ' ... ')
+        current_branch.checkout()
+        print('OK')
+
+        sys.stdout.write('Marking Pivotal Tracker stories ... ')
+        pivotal.start_release(args.version)
+        print('OK')
+    
     #- finish
     @classmethod
     def register_finish(cls, parent):
