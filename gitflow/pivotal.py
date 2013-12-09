@@ -12,7 +12,7 @@ import json
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
                                 ReleaseAlreadyAssigned, IllegalVersionFormat,
-                                StatusError, NoSuchBranchError)
+                                StatusError, NoSuchBranchError, PointMeError)
 
 
 PT_V5_ENDPOINT = 'https://www.pivotaltracker.com/services/v5'

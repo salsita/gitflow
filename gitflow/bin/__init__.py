@@ -32,8 +32,7 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat, InconsistencyDetected,
-                                PointMeError)
+                                IllegalVersionFormat, InconsistencyDetected)
 import gitflow.pivotal as pivotal
 import gitflow.review as review
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
