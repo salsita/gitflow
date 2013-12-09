@@ -536,7 +536,7 @@ class ReleaseCommand(GitFlowCommand):
 
         #+ Pivotal Tracker modifications.
         pivotal.prompt_user_to_confirm_release(args.version)
-        
+
         #+ Git modifications.
         sys.stdout.write('Creating release branch (base being %s) ... ' \
                          % base)
@@ -613,7 +613,7 @@ class ReleaseCommand(GitFlowCommand):
         sys.stdout.write('Marking Pivotal Tracker stories ... ')
         pivotal.start_release(args.version)
         print('OK')
-    
+
     #- finish
     @classmethod
     def register_finish(cls, parent):
