@@ -399,10 +399,7 @@ class ReleaseBranchManager(BranchManager):
         git = gitflow.git
 
         # there must be no active `release` branch other than the one requested
-        branches = self.list()
-        if len(branches) > 0:
-            if len(branches) == 1 and branches[0].name == self.full_name(version):
-                return
+        if len(self.list()) > 0:
             raise BranchTypeExistsError(self.identifier)
 
         # there must be no tag for this version yet
