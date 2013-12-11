@@ -552,7 +552,7 @@ class ReleaseCommand(GitFlowCommand):
         print 'OK'
 
         pivotal.start_release(args.version)
-        gitflow.checkout('release', release.get_version())
+        gitflow.checkout('release', args.version)
 
         #+ Deploy to the QA environment.
         if args.deploy:
