@@ -27,7 +27,7 @@ import subprocess as sub
 
 from gitflow.core import GitFlow, info, GitCommandError
 from gitflow.util import itersubclasses
-from gitflow.jenkins import Jenkins
+from gitflow.jenkins import Jenkins, DeploymentRequestError
 from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
@@ -1025,12 +1025,10 @@ class DeployCommand(GitFlowCommand):
     def register_develop(cls, parent):
         p = parent.add_parser('develop', help='Deploy the develop branch.')
         p.set_defaults(func=cls.run_develop)
-        p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Do not fetch from origin before performing local operation.')
 
     @staticmethod
     def run_develop(args):
-        args.branch = GitFlow().develop_name()
+        args.environ = 'develop'
         DeployCommand._run_deploy(args)
 
     #- release
@@ -1058,10 +1056,24 @@ class DeployCommand(GitFlowCommand):
         assert args.environ
         pivotal.check_version_format(args.version)
 
-        args.branch = GitFlow().managers['release'].full_name(args.version)
+        gitflow = GitFlow()
 
+        # Fetch remote refs.
+        if not args.no_fetch:
+            sys.stderr.write('Fetching origin ... ')
+            gitflow.origin().fetch()
+            print('OK')
+
+        # Check the environ argument.
+        branch = GitFlow().managers['release'].full_name(args.version)
         if args.environ not in ('qa', 'client'):
-            raise jenkins.DeploymentRequestError(args.branch, args.environ)
+            raise DeploymentRequestError(branch, args.environ)
+
+        # Make sure that the branch being deployed exists in origin.
+        sys.stderr.write("Checking whether branch '{0}' exists in origin ... " \
+                         .format(branch))
+        gitflow.require_origin_branch(branch)
+        print('OK')
 
         if args.environ == 'client' and not args.no_check:
             #+++ Check if all stories were accepted by the client
@@ -1083,43 +1095,30 @@ class DeployCommand(GitFlowCommand):
     def register_master(cls, parent):
         p = parent.add_parser('master', help='Deploy the master branch.')
         p.set_defaults(func=cls.run_master)
-        p.add_argument('-F', '--no-fetch', action='store_true',
-                help='Do not fetch from origin before performing local operation.')
 
     @staticmethod
     def run_master(args):
-        args.branch = GitFlow().master_name()
         args.environ = 'production'
         DeployCommand._run_deploy(args)
 
     #- deploy helper method
     @staticmethod
     def _run_deploy(args):
-        assert args.branch
         assert args.environ
         gitflow = GitFlow()
 
-        # Fetch remote refs.
-        if not args.no_fetch:
-            sys.stderr.write('Fetching origin ... ')
-            gitflow.origin().fetch()
-            print('OK')
-
-        # Make sure that the branch being deployed exists in origin.
-        sys.stderr.write("Checking if origin branch '{0}' exists ... " \
-                         .format(args.branch))
-        branch = gitflow.require_origin_branch(args.branch)
-        print('OK')
-
         # Trigger the job.
         jenkins = Jenkins.from_prompt()
+
         print('Triggering the deployment job (env being {0}) ... job {1} ... ' \
-                .format(args.environ, jenkins.get_deploy_job_name()))
+                .format(args.environ, jenkins.get_deploy_job_name(args.environ)))
         cause = 'Trigger by ' + gitflow.get('user.name') + \
             ' using the GitFlow plugin'
-        url = jenkins.get_url_for_next_invocation()
-        invocation = jenkins.trigger_deploy_job(args.branch, args.environ, cause)
-        print('The job has been enqueued. You can visit\n\n\t{0}\n\n' \
+        url = jenkins.get_url_for_next_invocation(args.environ)
+        invocation = jenkins.trigger_deploy_job(args.environ, cause)
+        print('OK')
+
+        print('\nThe job has been enqueued. You can visit\n\n\t{0}\n\n' \
                 'to see the progress.'.format(url))
 
 
