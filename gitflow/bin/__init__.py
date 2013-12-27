@@ -624,7 +624,7 @@ class ReleaseCommand(GitFlowCommand):
                        help='Just print a warning if there is no review for '
                             'a feature branch that is assigned to this release,'
                             ' do not fail.')
-        p.add_argument('-d', '--deploy', action='store_true',
+        p.add_argument('-D', '--skip-deployment', action='store_true',
                 help='Do deploy to the client staging environment.')
         p.add_argument('version', action=NotEmpty, help="Release to finish.")
 
@@ -651,7 +651,7 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         # Trigger the deployment job
-        if args.deploy:
+        if not args.skip_deployment:
             args.environ = 'client'
             args.no_check = True
             DeployCommand.run_release(args)
