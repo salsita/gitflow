@@ -134,7 +134,7 @@ class Story(object):
         return self.get_state() == 'started'
 
     def is_unstarted(self):
-        return self.get_state() == 'unstarted'
+        return self.get_state() == 'unstarted' or self.get_state() == 'unscheduled'
 
     def set_me_as_owner(self):
         headers = {'X-TrackerToken': _get_token()}
@@ -331,16 +331,26 @@ class Release(object):
     def try_finish(self):
         err = False
         for story in self:
+            if story.is_labeled('point me'):
+                err = True
+                print("    Story {0} labeled 'point me'!".format(story.get_url()))
+
+            label = None
+            for l in ('dupe', 'wontfix', 'cannot reproduce'):
+                if story.is_labeled(l):
+                    label = l
+                    print("    Story {0} labeled '{1}', skipping...".format(story.get_url(), l))
+                    break
+            if label is not None:
+                continue
+
             if not story.is_labeled('qa+'):
                 # Allow zero-point stories not to be QA'd since they are
                 # by definition refactoring stories.
                 if story.is_feature() and story.get_estimate() == 0:
                     continue
                 err = True
-                print("    Story not QA'd: " + story.get_url())
-            if story.is_labeled('point me'):
-                err = True
-                print("    Story labeled 'point me': " + story.get_url())
+                print("    Story {0} not QA'd!".format(story.get_url()))
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
