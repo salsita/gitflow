@@ -216,7 +216,7 @@ class Release(object):
         self._G = GitFlow()
         self._stories = stories
 
-    def try_finish(self, ignore_missing_reviews):
+    def try_stage(self, ignore_missing_reviews):
         assert self._stories
         feature_prefix = self._G.get_prefix('feature')
 
@@ -252,9 +252,9 @@ class Release(object):
             raise SystemExit('Some stories have not been reviewed yet,' \
                     ' aborting...')
 
-    try_deliver = try_finish
+    try_finish = try_stage
 
-    def deliver(self):
+    def finish(self):
         assert self._reviews is not None
         for review in self._reviews:
             review.submit()

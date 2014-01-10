@@ -556,10 +556,12 @@ class ReleaseCommand(GitFlowCommand):
         print "Follow-up actions:"
         print "- Bump the version number now!"
         print "- Start committing last-minute fixes in preparing your release"
+        print "- Wait for all the stories to be QA'd and reviewed"
         print "- When done, run:"
         print
-        print "     git flow release finish", args.version
+        print "     git flow release stage", args.version
         print
+        print "  to push the release to the client staging environment."
 
     #- append
     @classmethod
@@ -606,7 +608,7 @@ class ReleaseCommand(GitFlowCommand):
     @classmethod
     def register_stage(cls, parent):
         p = parent.add_parser('stage', help='Stage a release branch for the client.')
-        p.set_defaults(func=cls.run_finish)
+        p.set_defaults(func=cls.run_stage)
         p.add_argument('-F', '--no-fetch', action='store_true',
                 help='Do not fetch from origin before performing local operation.')
         p.add_argument('-R', '--ignore-missing-reviews', action='store_true',
@@ -625,18 +627,18 @@ class ReleaseCommand(GitFlowCommand):
         # Check if all stories were QA'd
         pt_release = pivotal.Release(args.version)
         print('Checking Pivotal Tracker stories ... ')
-        pt_release.try_finish()
+        pt_release.try_stage()
         print('OK')
 
         # Check if all relevant review requests are there
         rb_release = review.Release(pt_release)
         print('Checking Review Board review requests ... ')
-        rb_release.try_finish(args.ignore_missing_reviews)
+        rb_release.try_stage(args.ignore_missing_reviews)
         print('OK')
 
         # Deliver all relevant PT stories
         print('Delivering all relevant Pivotal Tracker stories ... ')
-        pt_release.finish()
+        pt_release.stage()
         print('OK')
 
         # Trigger the deployment job
@@ -647,13 +649,12 @@ class ReleaseCommand(GitFlowCommand):
 
         print
         print "Follow-up actions:"
-        print "- Deliver your project to the client staging environment."
         print "- Wait for the client to accept all the stories."
         print "- When all is done, run"
         print
-        print "     git flow release deliver", args.version
+        print "     git flow release finish", args.version
         print
-        print "  which will perform the final merge, tagging and cleanup."
+        print "  to perform the final merge, tagging and cleanup."
 
     #- finish
     @classmethod
@@ -696,13 +697,13 @@ class ReleaseCommand(GitFlowCommand):
         #+++ Check if all stories were QA'd
         pt_release = pivotal.Release(args.version)
         print('Checking Pivotal Tracker stories ... ')
-        pt_release.try_deliver()
+        pt_release.try_finish()
         print('OK')
 
         #+++ Check all relevant review requests in Review Board, to be sure
         rb_release = review.Release(pt_release)
         print('Checking Review Board review requests ... ')
-        rb_release.try_deliver(args.ignore_missing_reviews)
+        rb_release.try_finish(args.ignore_missing_reviews)
         print('OK')
 
         #+++ Merge release branch into develop and master
@@ -721,7 +722,7 @@ class ReleaseCommand(GitFlowCommand):
 
         #+++ Close all relevant review requests
         sys.stdout.write('Submitting all relevant review requests  ... ')
-        rb_release.deliver()
+        rb_release.finish()
         print('OK')
 
         #+++ Collect local and remote branches to be deleted
