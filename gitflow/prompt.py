@@ -74,7 +74,8 @@ def pick(option, title, source, reuse_existing=True):
         if a >= 1 and a <= i:
             answer = suggestions[a-1][0]
 
+    value = answer
     if isinstance(answer, basestring):
-        answer = answer.replace('-', MAGIC_STRING)
-    gitflow.set(option, answer)
+        value = answer.replace('-', MAGIC_STRING)
+    gitflow.set(option, value)
     return answer

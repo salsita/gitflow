@@ -25,38 +25,36 @@ class Jenkins(object):
         self._J = jenkinsapi.jenkins.Jenkins(self._get_jenkins_url(),
                 username, password)
 
-    def trigger_deploy_job(self, branch, environment, cause=None):
-        params = {'branch': branch, 'environment': environment}
-        return self._get_deploy_job().invoke(
-                securitytoken=self._get_deploy_job_token(),
-                build_params=params, cause=cause)
+    def trigger_deploy_job(self, environ, cause=None):
+        return self._get_deploy_job(environ).invoke(
+                securitytoken=self._get_deploy_job_token(environ), cause=cause)
 
     def _get_jenkins_url(self):
         return ask('gitflow.jenkins.url',
                 'Insert the Jenkins server url: ', set_globally=True)
 
-    def _get_deploy_job(self):
-        job_name = self.get_deploy_job_name()
+    def _get_deploy_job(self, environ):
+        job_name = self.get_deploy_job_name(environ)
         if job_name in self._J:
             return self._J[job_name]
         raise DeployJobNotFoundError(job_name)
 
-    def get_deploy_job_name(self):
-        return pick('gitflow.jenkins.deployjobname',
+    def get_deploy_job_name(self, environ):
+        return pick('gitflow.jenkins.deployjobname-' + environ,
                 'Jenkins jobs as the deploy job',
                 lambda: [(k, k) for k in self._J.keys()])
 
-    def _get_deploy_job_token(self):
+    def _get_deploy_job_token(self, environ):
         req = 'Insert the security token for Jenkins job {0}: ' \
-              .format(self.get_deploy_job_name())
-        raw = ask('gitflow.jenkins.deployjobtoken', req, secret=True)
+              .format(self.get_deploy_job_name(environ))
+        raw = ask('gitflow.jenkins.deployjobtoken-' + environ, req, secret=True)
 
-    def get_url_for_next_invocation(self):
+    def get_url_for_next_invocation(self, environ):
         prefix = self._get_jenkins_url()
         if prefix[-1] != '/':
             prefix += '/'
-        job = self._get_deploy_job()
-        job_name = self.get_deploy_job_name()
+        job = self._get_deploy_job(environ)
+        job_name = self.get_deploy_job_name(environ)
         build_number = job.get_next_build_number()
         return urlparse.urljoin(prefix, 'job/{0}/{1}/'.format(job_name, build_number))
 

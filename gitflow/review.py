@@ -216,7 +216,7 @@ class Release(object):
         self._G = GitFlow()
         self._stories = stories
 
-    def try_deliver(self, ignore_missing_reviews):
+    def try_stage(self, ignore_missing_reviews):
         assert self._stories
         feature_prefix = self._G.get_prefix('feature')
 
@@ -225,8 +225,13 @@ class Release(object):
         err = None
 
         for story in self._stories:
-            if story.is_labeled('no review'):
-                print "    'no review' PT label found, skipping..."
+            label = None
+            for l in ('no review', 'dupe', 'wontfix', 'cannot reproduce'):
+                if story.is_labeled(l):
+                    label = l
+                    print("    Story {0} labeled '{1}', skipping...".format(story.get_id(), l))
+                    break
+            if label is not None:
                 continue
 
             prefix = feature_prefix + str(story.get_id())
@@ -247,9 +252,9 @@ class Release(object):
             raise SystemExit('Some stories have not been reviewed yet,' \
                     ' aborting...')
 
-    try_finish = try_deliver
+    try_finish = try_stage
 
-    def deliver(self):
+    def finish(self):
         assert self._reviews is not None
         for review in self._reviews:
             review.submit()

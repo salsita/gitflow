@@ -12,7 +12,7 @@ import json
 
 from gitflow.exceptions import (NotInitialized, GitflowError,
                                 ReleaseAlreadyAssigned, IllegalVersionFormat,
-                                StatusError, NoSuchBranchError)
+                                StatusError, NoSuchBranchError, PointMeError)
 
 
 PT_V5_ENDPOINT = 'https://www.pivotaltracker.com/services/v5'
@@ -134,7 +134,7 @@ class Story(object):
         return self.get_state() == 'started'
 
     def is_unstarted(self):
-        return self.get_state() == 'unstarted'
+        return self.get_state() == 'unstarted' or self.get_state() == 'unscheduled'
 
     def set_me_as_owner(self):
         headers = {'X-TrackerToken': _get_token()}
@@ -328,24 +328,34 @@ class Release(object):
         for story in self.iter_candidates():
             story.assign_to_release(self._version)
 
-    def try_finish(self):
+    def try_stage(self):
         err = False
         for story in self:
+            if story.is_labeled('point me'):
+                err = True
+                print("    Story {0} labeled 'point me'!".format(story.get_url()))
+
+            label = None
+            for l in ('dupe', 'wontfix', 'cannot reproduce'):
+                if story.is_labeled(l):
+                    label = l
+                    print("    Story {0} labeled '{1}', skipping...".format(story.get_url(), l))
+                    break
+            if label is not None:
+                continue
+
             if not story.is_labeled('qa+'):
                 # Allow zero-point stories not to be QA'd since they are
                 # by definition refactoring stories.
                 if story.is_feature() and story.get_estimate() == 0:
                     continue
                 err = True
-                print("    Story not QA'd: " + story.get_url())
-            if story.is_labeled('point me'):
-                err = True
-                print("    Story labeled 'point me': " + story.get_url())
+                print("    Story {0} not QA'd!".format(story.get_url()))
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
-    def finish(self):
-        print 'Following stories were delivered for client acceptance as of release %s:' \
+    def stage(self):
+        print 'Following stories were staged for client acceptance as of release %s:' \
               % self._version
         for story in self:
             if not story.is_delivered() \
@@ -355,8 +365,8 @@ class Release(object):
             sys.stdout.write('    ')
             story.dump()
 
-    def try_deliver(self):
-        self.try_finish()
+    def try_finish(self):
+        self.try_stage()
         err = False
         for story in self:
             if not story.is_accepted():
@@ -661,3 +671,44 @@ def show_release_summary(gitflow):
     #    if blockers:
     #        print "Story '%s' is blocked by stories: %s" % (story, blockers)
     #import ipdb; ipdb.set_tracce()
+
+
+def prompt_user_to_confirm_release(version):
+    release = Release(version)
+    any_assigned = False
+    print
+    print 'Stories already assigned to this release:'
+    for story in release:
+        sys.stdout.write('    ')
+        story.dump()
+        any_assigned = True
+    if not any_assigned:
+        print '    None'
+    print
+    any_candidate = False
+    any_pointme = False
+    print 'Stories to be newly assigned to this release:'
+    for story in release.iter_candidates():
+        if story.is_labeled('point me'):
+            sys.stdout.write('PM  ')
+            any_pointme = True
+        else:
+            sys.stdout.write('    ')
+        story.dump()
+        any_candidate = True
+    if not any_candidate:
+        print '    None'
+    print
+
+    if not any_candidate:
+        raise SystemExit('No new stories to be added to the release,' \
+                'aborting...')
+
+    if any_pointme:
+        raise PointMeError("Some stories are labeled with the 'point me' label")
+
+    if not release.prompt_for_confirmation():
+        raise SystemExit('Aborting...')
+
+def start_release(version):
+    Release(version).start()

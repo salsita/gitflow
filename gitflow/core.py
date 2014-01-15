@@ -176,6 +176,14 @@ class GitFlow(object):
         info('Switching to branch %s' % branch)
         branch.checkout()
 
+    def _ensure_remote_develop_branch(self):
+        # push the develop branch if it does not exist in origin
+        remote_develop = self.origin_name(self.develop_name())
+        if not remote_develop in self.branch_names(remote=True):
+            develop_name = self.develop_name()
+            sys.stdout.write('Branch {0} not found in origin, pushing it now ... '.format(develop_name))
+            self.origin().push([develop_name])
+            print('OK')
 
     def _enforce_git_repo(self):
         """
@@ -228,6 +236,7 @@ Git config '%s' missing, please fill it in by executing
         self._init_config(master, develop, prefixes, names, force_defaults)
         self._init_initial_commit()
         self._init_develop_branch()
+        self._ensure_remote_develop_branch()
         return self
 
     def is_initialized(self):
