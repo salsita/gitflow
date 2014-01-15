@@ -328,7 +328,7 @@ class Release(object):
         for story in self.iter_candidates():
             story.assign_to_release(self._version)
 
-    def try_finish(self):
+    def try_stage(self):
         err = False
         for story in self:
             if story.is_labeled('point me'):
@@ -354,8 +354,8 @@ class Release(object):
         if err:
             raise StatusError("Pivotal Tracker check did not pass, operation canceled.")
 
-    def finish(self):
-        print 'Following stories were delivered for client acceptance as of release %s:' \
+    def stage(self):
+        print 'Following stories were staged for client acceptance as of release %s:' \
               % self._version
         for story in self:
             if not story.is_delivered() \
@@ -365,8 +365,8 @@ class Release(object):
             sys.stdout.write('    ')
             story.dump()
 
-    def try_deliver(self):
-        self.try_finish()
+    def try_finish(self):
+        self.try_stage()
         err = False
         for story in self:
             if not story.is_accepted():
