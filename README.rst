@@ -242,6 +242,22 @@ A small demo how a complete feature implementation could look like::
     $ git flow release finish 1.0.0
     # PROFIT NOW!
 
+
+Known Issues
+------------
+
+- ``AssertionError`` is a bug in one of the libraries that we failed to get rid of, it is not worth the time.
+  When you get this error, just repeat the command again, it happens only occasionally.
+- ``feature finish`` hangs when posting the review. This usually means that it is prompting your for
+  username and password, but you cannot see it because there is a bug in ``rbt``. The bug is fixed in ``0.5.3``
+  of ``rbt``, but other things are broken there so it cannot be used. Just try to insert your Review Board
+  username and password and see if that helped.
+- ``Api10`` error on ``feature finish`` usually means there was an HTTP error and ``rbt`` received a weird response.
+  Try again after making sure that your ``git config reviewboard.url|reviewboard.server`` points to the right server.
+- ``feature finish`` saying the diff is empty can happen when you change a submodule. This is a wrong usage
+  of gitflow. You should be using the multi-repo mode and call ``git flow feature start`` from the repository
+  containing the submodule.
+
 History of the Project
 =========================
 
