@@ -46,7 +46,7 @@ class UnauthorizedError(RequestError):
 
 def parse(node):
     # determine type
-    if node.attributes:
+    if node.attributes.has_key("type"):
         obj_type = node.attributes["type"].value
     elif node.nodeName in ["stories", "notes"]:
         obj_type = "array"
