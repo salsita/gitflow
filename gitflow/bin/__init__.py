@@ -736,6 +736,8 @@ class ReleaseCommand(GitFlowCommand):
         # refs = [<type>/<id>/...]
         refs = [str(ref)[len(origin_prefix):] for ref in origin.refs]
         for story in pt_release:
+            if story.is_rejected():
+                continue
             # prefix = <feature-prefix>/<id>
             prefix = feature_prefix + str(story.get_id())
             base_marker = gitflow.managers['feature'].base_marker_name(prefix)

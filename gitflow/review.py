@@ -11,8 +11,12 @@ from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
                                 NoSuchBranchError, AncestorNotFound, EmptyDiff,
                                 PostReviewError)
 
+class ReviewRequestLimitError(GitflowError):
+    def __str__(self):
+        return 'Too many code review requests: {0}'.format(self.args[0])
 
 class ReviewNotAcceptedYet(GitflowError): pass
+
 
 _gitflow = GitFlow()
 
@@ -189,10 +193,13 @@ class BranchReview(object):
     @classmethod
     def from_prefix(cls, prefix):
         client = _get_client()
-        options = dict(repository=_get_repo_id(), status='all')
-        reviews = [r for r in client.get_review_requests(options=options)
-                     if r['branch'].startswith(prefix) \
-                             and r['status'] != 'discarded']
+        options = {'repository': _get_repo_id(), 'status': 'pending', 'max-results': 200}
+        requests = client.get_review_requests(options=options)
+        if len(requests) == 200:
+            raise ReviewRequestLimitError(200)
+
+        reviews = [r for r in requests if r['branch'].startswith(prefix) and \
+                                          r['status'] != 'discarded']
         if len(reviews) == 0:
             raise NoSuchBranchError(
                     'No review request found for branch prefixed with ' + prefix)

@@ -181,6 +181,12 @@ a more complete list. The best documentation is, however,::
   review check altogether or just append ``no review`` label into Pivotal Tracker to
   disable the check just for one particular story.
 
+  You will be asked for a few of questions when you run ``release stage`` for
+  the first time. Jenkins security token can be a bit confusing. This string can
+  be found on the Jenkins job configuration page, or set there if it is not
+  activated for the chosen project yet. The checkbox you are looking for is
+  called ``Trigger builds remotely (e.g., from scripts)``.
+
   ``release finish`` makes sure that all the stories were accepted by the client.
   Then the release branch is merged into master, tagged, then merged into develop and
   deleted.
@@ -241,6 +247,22 @@ A small demo how a complete feature implementation could look like::
     # ... wait for the client, mmmmmmmmmm ...
     $ git flow release finish 1.0.0
     # PROFIT NOW!
+
+
+Known Issues
+------------
+
+- ``AssertionError`` is a bug in one of the libraries that we failed to get rid of, it is not worth the time.
+  When you get this error, just repeat the command again, it happens only occasionally.
+- ``feature finish`` hangs when posting the review. This usually means that it is prompting your for
+  username and password, but you cannot see it because there is a bug in ``rbt``. The bug is fixed in ``0.5.3``
+  of ``rbt``, but other things are broken there so it cannot be used. Just try to insert your Review Board
+  username and password and see if that helped.
+- ``Api10`` error on ``feature finish`` usually means there was an HTTP error and ``rbt`` received a weird response.
+  Try again after making sure that your ``git config reviewboard.url|reviewboard.server`` points to the right server.
+- ``feature finish`` saying the diff is empty can happen when you change a submodule. This is a wrong usage
+  of gitflow. You should be using the multi-repo mode and call ``git flow feature start`` from the repository
+  containing the submodule.
 
 History of the Project
 =========================
