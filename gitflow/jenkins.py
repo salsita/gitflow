@@ -1,6 +1,9 @@
 import ConfigParser
-import jenkinsapi.jenkins
 import getpass
+import jenkinsapi.jenkins
+import requests
+import signal
+import sys
 import urlparse
 
 from .core import GitFlow, requires_initialized
@@ -30,8 +33,33 @@ class Jenkins(object):
                 securitytoken=self._get_deploy_job_token(environ), cause=cause)
 
     def _get_jenkins_url(self):
-        return ask('gitflow.jenkins.url',
-                'Insert the Jenkins server url: ', set_globally=True)
+        prev_handler = None
+
+        def handler(signum, frame):
+            try:
+                self._G.delete('gitflow.jenkins.url')
+                prev_handler(signum, frame)
+            except:
+                pass
+
+        prev_handler = signal.signal(signal.SIGINT, handler)
+
+        def is_valid(value):
+            try:
+                return requests.get(value).status_code != 404
+            except Exception as ex:
+                sys.stderr.write(str(ex) + '\n\n')
+                return False
+
+        try:
+            value = ask('gitflow.jenkins.url',
+                        'Insert the Jenkins server url: ',
+                        set_globally=True, is_valid=is_valid)
+        except EOFError:
+            raise SystemExit('Operation canceled')
+
+        signal.signal(signal.SIGINT, prev_handler)
+        return value
 
     def _get_deploy_job(self, environ):
         job_name = self.get_deploy_job_name(environ)

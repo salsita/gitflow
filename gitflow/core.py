@@ -291,6 +291,10 @@ Git config '%s' missing, please fill it in by executing
     def is_set(self, setting):
         return self.get(setting, None) is not None
 
+    @requires_repo
+    def delete(self, setting):
+        section, option = self._parse_setting(setting)
+        self.repo.config_writer().remove(section, option)
 
     @requires_repo
     def _safe_get(self, setting_name):
