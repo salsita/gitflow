@@ -193,7 +193,7 @@ class BranchReview(object):
     @classmethod
     def from_prefix(cls, prefix):
         client = _get_client()
-        options = {'repository': _get_repo_id(), 'status': 'all', 'max-results': 200}
+        options = {'repository': _get_repo_id(), 'status': 'pending', 'max-results': 200}
         requests = client.get_review_requests(options=options)
         if len(requests) == 200:
             raise ReviewRequestLimitError(200)

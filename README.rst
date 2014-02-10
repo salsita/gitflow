@@ -181,6 +181,12 @@ a more complete list. The best documentation is, however,::
   review check altogether or just append ``no review`` label into Pivotal Tracker to
   disable the check just for one particular story.
 
+  You will be asked for a few of questions when you run ``release stage`` for
+  the first time. Jenkins security token can be a bit confusing. This string can
+  be found on the Jenkins job configuration page, or set there if it is not
+  activated for the chosen project yet. The checkbox you are looking for is
+  called ``Trigger builds remotely (e.g., from scripts)``.
+
   ``release finish`` makes sure that all the stories were accepted by the client.
   Then the release branch is merged into master, tagged, then merged into develop and
   deleted.
