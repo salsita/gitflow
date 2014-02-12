@@ -191,6 +191,13 @@ a more complete list. The best documentation is, however,::
   Then the release branch is merged into master, tagged, then merged into develop and
   deleted.
 
+* To extend the release to include additional features, use::
+
+      git flow release append <major.minor.release>
+
+  which adds the relevant label to all unassigned Pivotal Tracker stories and then
+  merges develop into the current release branch.
+
 * To list/start/finish hotfix branches (not supported by Salsita), use::
 
       git flow hotfix
