@@ -112,6 +112,7 @@ class GitFlow(object):
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
+            'gitflow.pagination': 10,
             }
         for identifier, manager in self.managers.items():
             self.defaults['gitflow.prefix.%s' % identifier] = manager.DEFAULT_PREFIX
@@ -248,7 +249,8 @@ Git config '%s' missing, please fill it in by executing
                 self.is_set('gitflow.prefix.hotfix') and
                 self.is_set('gitflow.prefix.support') and
                 self.is_set('gitflow.prefix.versiontag') and
-                self.is_set('gitflow.release.versionmatcher'))
+                self.is_set('gitflow.release.versionmatcher') and
+                self.is_set('gitflow.pagination'))
 
     def _parse_setting(self, setting):
         groups = setting.split('.', 2)

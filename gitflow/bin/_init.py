@@ -221,6 +221,9 @@ def run_default(args):
     _ask_name(args, 'release.versionmatcher',
             'Regular expression for matching release numbers')
 
+    _ask_name(args, 'pagination',
+            'Number of stories to list on one page')
+
     _ask_pt_projid(args.use_defaults)
     _ask_pt_labels(args.use_defaults)
     _ask_rb_repoid(args.use_defaults)

@@ -450,7 +450,12 @@ def prompt_user_to_select_story(match=None):
     pattern = None
     if match is not None:
         pattern = re.compile(match)
+    try:
+        page_size = int(_gitflow.get('gitflow.pagination'))
+    except Exception:
+        page_size = 10
 
+    index = ""
     print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
     for story in _iter_stories():
         if story.is_feature() and not story.is_estimated():
@@ -473,6 +478,14 @@ def prompt_user_to_select_story(match=None):
         # The story passes all the criterias, add it to the list.
         stories.append(story)
         print_story(story.to_dict(), i)
+
+        if i % page_size == 0:
+            msg = "\nSelect a story, or press ENTER to see more stories, or type 'q' to quit: "
+            index = raw_input(msg)
+            if index != "":
+                break
+            print("")
+
         i += 1
     print Style.DIM + "-----------------------------" + Style.RESET_ALL
     print
@@ -483,8 +496,9 @@ def prompt_user_to_select_story(match=None):
                 ' to work on.')
 
     # Prompt user to choose story index.
-    print "Select story (or 'q' to quit): "
-    index = raw_input()
+    if index == "":
+        print("Select a story, or type 'q' to quit: ")
+        index = raw_input()
     if index == "q":
         raise SystemExit("Operation canceled.")
 
