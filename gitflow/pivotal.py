@@ -444,9 +444,13 @@ def filter_stories(stories, states, types=None):
         s['story_type'] in types]
 
 
-def prompt_user_to_select_story():
+def prompt_user_to_select_story(match=None):
     i = 1
     stories = list()
+    pattern = None
+    if match is not None:
+        pattern = re.compile(match)
+
     print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
     for story in _iter_stories():
         if story.is_feature() and not story.is_estimated():
@@ -458,12 +462,18 @@ def prompt_user_to_select_story():
                 or story.get_branch() is not None) \
                 and not story.is_rejected():
             continue
-        if story.is_started() \
-                or story.is_unstarted() \
-                or story.is_rejected():
-            stories.append(story)
-            print_story(story.to_dict(), i)
-            i += 1
+        # Make sure the story state is one of the accepted states.
+        if not story.is_started() \
+                and not story.is_unstarted() \
+                and not story.is_rejected():
+            continue
+        # If the matching regexp is defined, make sure the story matches.
+        if pattern is not None and pattern.search(story.get_name()) is None:
+            continue
+        # The story passes all the criterias, add it to the list.
+        stories.append(story)
+        print_story(story.to_dict(), i)
+        i += 1
     print Style.DIM + "-----------------------------" + Style.RESET_ALL
     print
 
