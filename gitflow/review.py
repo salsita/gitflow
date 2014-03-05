@@ -254,7 +254,7 @@ class Release(object):
                 print('    ' + str(e))
                 err = e
         if err is not None:
-            raise SystemExit('An error detected, aborting...')
+            raise SystemExit(str(err))
         if not ignore_missing_reviews and len(self._reviews) != reviews_expected:
             raise SystemExit('Some stories have not been reviewed yet,' \
                     ' aborting...')
