@@ -48,13 +48,17 @@ def pick(option, title, source, reuse_existing=True):
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         pass
 
+    # Get the suggestions list.
+    suggestions = source()
+    if len(suggestions) == 0:
+        raise SystemExit('No {0} available, exiting...'.format(title))
+
     # If that fails, ask the user to pick up one of the values.
     print
     print 'Please choose one of the following %s:' % title
     msg = '    Loading...'
     sys.stdout.write(msg)
     sys.stdout.flush()
-    suggestions = source()
     sys.stdout.write('\r' * len(msg))
 
     answer = None
