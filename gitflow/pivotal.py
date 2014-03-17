@@ -449,7 +449,10 @@ def prompt_user_to_select_story(match=None):
     stories = list()
     pattern = None
     if match is not None:
-        pattern = re.compile(match)
+        try:
+            pattern = re.compile(match)
+        except Exception as ex:
+            raise GitflowError('failed to parse --match flag: {0}'.format(ex))
     try:
         page_size = int(_gitflow.get('gitflow.pagination'))
     except Exception:
