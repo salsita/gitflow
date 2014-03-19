@@ -112,7 +112,7 @@ class GitFlow(object):
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
-            'gitflow.pagination': 10,
+            'gitflow.pagination': '10',
             }
         for identifier, manager in self.managers.items():
             self.defaults['gitflow.prefix.%s' % identifier] = manager.DEFAULT_PREFIX
