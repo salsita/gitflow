@@ -444,9 +444,21 @@ def filter_stories(stories, states, types=None):
         s['story_type'] in types]
 
 
-def prompt_user_to_select_story():
+def prompt_user_to_select_story(match=None):
     i = 1
     stories = list()
+    pattern = None
+    if match is not None:
+        try:
+            pattern = re.compile(match)
+        except Exception as ex:
+            raise GitflowError('failed to parse --match flag: {0}'.format(ex))
+    try:
+        page_size = int(_gitflow.get('gitflow.pagination'))
+    except Exception:
+        page_size = 10
+
+    index = ""
     print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
     for story in _iter_stories():
         if story.is_feature() and not story.is_estimated():
@@ -458,12 +470,26 @@ def prompt_user_to_select_story():
                 or story.get_branch() is not None) \
                 and not story.is_rejected():
             continue
-        if story.is_started() \
-                or story.is_unstarted() \
-                or story.is_rejected():
-            stories.append(story)
-            print_story(story.to_dict(), i)
-            i += 1
+        # Make sure the story state is one of the accepted states.
+        if not story.is_started() \
+                and not story.is_unstarted() \
+                and not story.is_rejected():
+            continue
+        # If the matching regexp is defined, make sure the story matches.
+        if pattern is not None and pattern.search(story.get_name()) is None:
+            continue
+        # The story passes all the criterias, add it to the list.
+        stories.append(story)
+        print_story(story.to_dict(), i)
+
+        if i % page_size == 0:
+            msg = "\nSelect a story, or press ENTER to see more stories, or type 'q' to quit: "
+            index = raw_input(msg)
+            if index != "":
+                break
+            print("")
+
+        i += 1
     print Style.DIM + "-----------------------------" + Style.RESET_ALL
     print
 
@@ -473,8 +499,9 @@ def prompt_user_to_select_story():
                 ' to work on.')
 
     # Prompt user to choose story index.
-    print "Select story (or 'q' to quit): "
-    index = raw_input()
+    if index == "":
+        print("Select a story, or type 'q' to quit: ")
+        index = raw_input()
     if index == "q":
         raise SystemExit("Operation canceled.")
 

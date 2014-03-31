@@ -160,6 +160,8 @@ class FeatureCommand(GitFlowCommand):
                 help='Do not fetch from origin before performing local operation.')
         p.add_argument('-r', '--for-release',
                 help='Base the feature branch on a release branch.')
+        p.add_argument('-m', '--match',
+                help='Filter stories by regular expression')
 
     @staticmethod
     def run_start(args):
@@ -191,7 +193,7 @@ class FeatureCommand(GitFlowCommand):
             git.branch(base, origin_base.name)
         print('OK')
 
-        [story, name] = pivotal.prompt_user_to_select_story()
+        [story, name] = pivotal.prompt_user_to_select_story(match=args.match)
 
         sys.stdout.write('Setting myself as the story owner ... ')
         try:
