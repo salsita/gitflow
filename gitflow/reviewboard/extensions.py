@@ -47,7 +47,7 @@ Api20Client.get_reviews_for_review_request = get_reviews_for_review_request
 def get_review_requests(self, options=None, branch=None):
     options = options or {}
     rsp = self._api_request(
-        'GET', '/api/review-requests?%s' % urllib.urlencode(options))
+        'GET', '/api/review-requests/?%s' % urllib.urlencode(options))
     requests = rsp['review_requests']
     if branch:
         return [r for r in requests if r['branch'] == branch]
