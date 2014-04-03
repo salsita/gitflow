@@ -38,7 +38,7 @@ def get_latest_review_request_for_branch(rb_server_url, branch):
 
 def get_reviews_for_review_request(self, rev_req_id):
     rsp = self._api_request(
-        'GET', '/api/review-requests/%s/reviews' % rev_req_id)
+        'GET', '/api/review-requests/%s/reviews/' % rev_req_id)
     return rsp['reviews']
 
 Api20Client.get_reviews_for_review_request = get_reviews_for_review_request
