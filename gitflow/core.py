@@ -112,6 +112,7 @@ class GitFlow(object):
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
+            'gitflow.circleci.enabled': 'y',
             'gitflow.pagination': '10',
             }
         for identifier, manager in self.managers.items():
@@ -250,6 +251,7 @@ Git config '%s' missing, please fill it in by executing
                 self.is_set('gitflow.prefix.support') and
                 self.is_set('gitflow.prefix.versiontag') and
                 self.is_set('gitflow.release.versionmatcher') and
+                self.is_set('gitflow.circleci.enabled') and
                 self.is_set('gitflow.pagination'))
 
     def _parse_setting(self, setting):
@@ -311,12 +313,28 @@ Git config '%s' missing, please fill it in by executing
     def develop_name(self):
         return self._safe_get('gitflow.branch.develop')
 
+    def client_name(self):
+        return 'client'
+
+    def client_exists(self):
+        client = self.client_name()
+        return client in self.branch_names() or \
+               self.origin_name(client) in self.branch_names(remote=True)
+
     def origin_name(self, name=None):
         origin = self.get('gitflow.origin', self.defaults['gitflow.origin'])
         if name is not None:
             return origin + '/' + name
         else:
             return origin
+
+    @requires_repo
+    def current_branch(self):
+        return self.repo.head.ref.name
+
+    @requires_initialized
+    def is_circleci_enabled(self):
+        return self.get('gitflow.circleci.enabled').lower() != 'n'
 
     @requires_repo
     def require_remote(self, name):

@@ -133,7 +133,7 @@ def _ask_config(args, name, question):
         print question +':', default_suggestion
         answer = default_suggestion
     else:
-        answer = raw_input(question + '? [' + default_suggestion + '] ')
+        answer = raw_input(question + '? [' + str(default_suggestion) + '] ')
         answer = answer.strip() or default_suggestion
         if answer == '-':
             answer = ''
@@ -220,6 +220,9 @@ def run_default(args):
 
     _ask_name(args, 'release.versionmatcher',
             'Regular expression for matching release numbers')
+
+    _ask_name(args, 'circleci.enabled',
+            'Enable Circle CI integration [Y/n]')
 
     _ask_name(args, 'pagination',
             'Number of stories to list on one page')

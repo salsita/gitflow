@@ -1055,23 +1055,17 @@ class DeployCommand(GitFlowCommand):
         if args.environ not in ('qa', 'client'):
             raise DeploymentRequestError(branch, args.environ)
 
-        # Make sure that the branch being deployed exists in origin.
-        sys.stderr.write("Checking whether branch '{0}' exists in origin ... " \
-                         .format(branch))
-        gitflow.require_origin_branch(branch)
-        print('OK')
-
         if args.environ == 'client' and not args.no_check:
             #+++ Check if all stories were accepted by the client
             pt_release = pivotal.Release(args.version)
             print('Checking Pivotal Tracker stories ... ')
-            pt_release.try_finish()
+            pt_release.try_stage()
             print('OK')
 
             #+++ Check all relevant review requests in Review Board, to be sure
             rb_release = review.Release(pt_release)
             print('Checking if all relevant stories have been reviewed ... ')
-            rb_release.try_finish(args.ignore_missing_reviews)
+            rb_release.try_stage(args.ignore_missing_reviews)
             print('OK')
 
         DeployCommand._run_deploy(args)
@@ -1091,21 +1085,69 @@ class DeployCommand(GitFlowCommand):
     @staticmethod
     def _run_deploy(args):
         assert args.environ
+        if args.environ in ('qa', 'client'):
+            assert args.version
+
         gitflow = GitFlow()
 
-        # Trigger the job.
-        jenkins = Jenkins.from_prompt()
+        branches = {
+                'develop':    gitflow.develop_name(),
+                'qa':         gitflow.managers['release'].full_name(args.version),
+                'client':     gitflow.client_name(),
+                'production': gitflow.master_name(),
+        }
 
-        print('Triggering the deployment job (env being {0}) ... job {1} ... ' \
-                .format(args.environ, jenkins.get_deploy_job_name(args.environ)))
-        cause = 'Trigger by ' + gitflow.get('user.name') + \
-            ' using the GitFlow plugin'
-        url = jenkins.get_url_for_next_invocation(args.environ)
-        invocation = jenkins.trigger_deploy_job(args.environ, cause)
-        print('OK')
+        if gitflow.is_circleci_enabled():
+            _deploy_circleci(gitflow, branches, args.environ)
+        else:
+            _deploy_jenkins(gitflow, branches, args.environ)
 
-        print('\nThe job has been enqueued. You can visit\n\n\t{0}\n\n' \
-                'to see the progress.'.format(url))
+
+def _deploy_circleci(gitflow, branches, environ):
+    repo = gitflow.repo
+    git = repo.git
+
+    sys.stdout.write('Circle CI integration enabled ... ')
+    sys.stdout.flush()
+    # Make sure that the client branch is pointing to the right place.
+    if environ == 'client':
+        release = branches['qa']
+        gitflow.must_be_uptodate(release)
+        if gitflow.client_exists():
+            current = gitflow.current_branch()
+            git.checkout(gitflow.client_name())
+            git.reset('--hard', release)
+            git.checkout(current)
+        else:
+            git.branch(gitflow.client_name(), release)
+    # Push the relevant branch to deploy it.
+    branch = branches[environ]
+    sys.stdout.write('pushing {0} ... '.format(branch))
+    sys.stdout.flush()
+    gitflow.origin().push([branch])
+    print('OK')
+
+def _deploy_jenkins(gitflow, branches, environ):
+    # Make sure that the branch being deployed exists in origin.
+    branch = branches[environ]
+    sys.stderr.write("Checking whether branch '{0}' exists in origin ... " \
+                     .format(branch))
+    gitflow.require_origin_branch(branch)
+    print('OK')
+
+    # Trigger the job.
+    jenkins = Jenkins.from_prompt()
+
+    print('Triggering the deployment job (env being {0}) ... job {1} ... ' \
+            .format(environ, jenkins.get_deploy_job_name(environ)))
+    cause = 'Triggered by ' + gitflow.get('user.name') + \
+        ' using the GitFlow plugin'
+    url = jenkins.get_url_for_next_invocation(environ)
+    invocation = jenkins.trigger_deploy_job(environ, cause)
+    print('OK')
+
+    print('\nThe job has been enqueued. You can visit\n\n\t{0}\n\n' \
+            'to see the progress.'.format(url))
 
 
 def main():
