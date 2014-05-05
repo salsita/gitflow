@@ -260,7 +260,7 @@ class BranchManager(object):
         except GitCommandError, e:
             txt = stdout.getvalue().rstrip()
             if e.stderr:
-                text = text + '\n' + e.stderr
+                txt = txt + '\n' + e.stderr
             raise MergeError(txt)
 
     def delete(self, name, force=False):
