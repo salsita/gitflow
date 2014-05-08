@@ -1116,7 +1116,7 @@ def _deploy_circleci(gitflow, branches, environ):
         if gitflow.client_exists():
             current = gitflow.current_branch()
             git.checkout(gitflow.client_name())
-            git.reset('--hard', release)
+            git.reset('--soft', release)
             git.checkout(current)
         else:
             git.branch(gitflow.client_name(), release)
