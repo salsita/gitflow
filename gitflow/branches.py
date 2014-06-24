@@ -412,7 +412,7 @@ class ReleaseBranchManager(BranchManager):
             version, base, fetch=fetch, must_be_on_default_base=True)
 
         # push the newly created branch
-        git.push(gitflow.origin_name(), self.by_name_prefix(version))
+        git.push('-u', gitflow.origin_name(), self.by_name_prefix(version))
 
         return b
 
