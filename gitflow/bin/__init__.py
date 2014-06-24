@@ -627,9 +627,11 @@ class ReleaseCommand(GitFlowCommand):
         assert args.version
         pivotal.check_version_format(args.version)
 
+        gitflow = GitFlow()
+
         # Check the repository if CircleCI is enabled.
-        if GitFlow().is_circleci_enabled():
-            _try_deploy_circleci()
+        if gitflow.is_circleci_enabled():
+            _try_deploy_circleci(gitflow, args.version)
 
         # Check if all stories were QA'd
         pt_release = pivotal.Release(args.version)
@@ -1108,7 +1110,7 @@ class DeployCommand(GitFlowCommand):
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
-def _try_deploy_circleci():
+def _try_deploy_circleci(gitflow, version):
     # The repository must be completely clean for this step to proceed.
     try:
         output = sub.check_output(["git", "status", "--porcelain"])
@@ -1122,6 +1124,9 @@ def _try_deploy_circleci():
         print(output)
         print("Commit or stash your changes, then retry.")
         raise SystemExit("Operation canceled.")
+
+    # The release branch must exist.
+    gitflow.name_or_current("release", version)
 
 def _deploy_circleci(gitflow, branches, environ):
     repo = gitflow.repo
