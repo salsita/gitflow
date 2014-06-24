@@ -32,7 +32,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat, InconsistencyDetected)
+                                IllegalVersionFormat, InconsistencyDetected,
+                                OperationsError)
 import gitflow.pivotal as pivotal
 import gitflow.review as review
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
@@ -626,6 +627,10 @@ class ReleaseCommand(GitFlowCommand):
         assert args.version
         pivotal.check_version_format(args.version)
 
+        # Check the repository if CircleCI is enabled.
+        if GitFlow().is_circleci_enabled():
+            _try_deploy_circleci()
+
         # Check if all stories were QA'd
         pt_release = pivotal.Release(args.version)
         print('Checking Pivotal Tracker stories ... ')
@@ -1103,12 +1108,28 @@ class DeployCommand(GitFlowCommand):
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
+def _try_deploy_circleci():
+    # The repository must be completely clean for this step to proceed.
+    try:
+        output = sub.check_output(["git", "status", "--porcelain"])
+    except sub.CalledProcessError as ex:
+        sys.stderr.write("git status --porcelain failed\n")
+        raise OperationsError(ex)
+
+    if len(output) != 0:
+        print("The repository is dirty!")
+        print("git status --porcelain:")
+        print(output)
+        print("Commit or stash your changes, then retry.")
+        raise SystemExit("Operation canceled.")
+
 def _deploy_circleci(gitflow, branches, environ):
     repo = gitflow.repo
     git = repo.git
 
-    sys.stdout.write('Circle CI integration enabled ... ')
+    sys.stdout.write('Pushing branch for CircleCI  ... ')
     sys.stdout.flush()
+
     # Make sure that the client branch is pointing to the right place.
     if environ == 'client':
         release = branches['qa']
@@ -1120,6 +1141,7 @@ def _deploy_circleci(gitflow, branches, environ):
             git.checkout(current)
         else:
             git.branch(gitflow.client_name(), release)
+
     # Push the relevant branch to deploy it.
     branch = branches[environ]
     sys.stdout.write('pushing {0} ... '.format(branch))
