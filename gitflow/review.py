@@ -113,8 +113,8 @@ class BranchReview(object):
             for line in lines:
                 if line.startswith('> Story being reviewed'):
                     break
-                kept_desc.append(line)
-            desc = '\n'.join(kept_desc) + '\n' + desc
+                kept_desc.append(line.decode('utf-8'))
+            desc = u'\n'.join(kept_desc) + u'\n' + desc.decode('utf-8')
 
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
