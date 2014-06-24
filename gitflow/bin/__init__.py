@@ -709,7 +709,7 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         #+++ Merge release branch into develop and master
-        sys.stdout.write('Finishing release branch %s ... ' % version)
+        sys.stdout.write('Merging release branch %s ... ' % version)
         tagging_info = None
         if not args.notag:
             tagging_info = dict(
@@ -718,8 +718,8 @@ class ReleaseCommand(GitFlowCommand):
                 message=args.message)
         gitflow.finish('release', version,
                                  fetch=(not args.no_fetch), rebase=False,
-                                 keep=args.keep, force_delete=False,
-                                 tagging_info=tagging_info, push=(not args.no_push))
+                                 keep=True, force_delete=False,
+                                 tagging_info=tagging_info, push=False)
         print('OK')
 
         #+++ Close all relevant review requests
