@@ -179,7 +179,8 @@ a more complete list. The best documentation is, however,::
   their QA and review status. If the check passes, the branch is deployed to the client
   staging environment to be accepted by the client. You can use ``-R`` to disable code
   review check altogether or just append ``no review`` label into Pivotal Tracker to
-  disable the check just for one particular story.
+  disable the check just for one particular story. If the story is labeled with ``dupe``,
+  ``wontfix`` or ``cannot reproduce``, the QA check will be disabled as well.
 
   You will be asked for a few of questions when you run ``release stage`` for
   the first time. Jenkins security token can be a bit confusing. This string can
