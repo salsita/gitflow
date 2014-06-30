@@ -755,15 +755,16 @@ class ReleaseCommand(GitFlowCommand):
                 if ref.startswith(prefix) or ref == base_marker:
                     remote_branches.append(ref)
         #+ Collect releases to be deleted.
-        release_branch = gitflow.get_prefix('release') + version
-        try:
-            gitflow.nameprefix_or_current('release', version)
-            local_branches.append(release_branch)
-        except NoSuchBranchError:
-            pass
-        if release_branch in refs:
-            remote_branches.append(release_branch)
-        print 'OK'
+        if !args.keep:
+            release_branch = gitflow.get_prefix('release') + version
+            try:
+                gitflow.name_or_current('release', version)
+                local_branches.append(release_branch)
+            except NoSuchBranchError:
+                pass
+            if release_branch in refs:
+                remote_branches.append(release_branch)
+            print 'OK'
 
         #+++ Delete local and remote branches that are a part of this release
         sys.stdout.write('Checking out %s ... ' % gitflow.develop_name())
