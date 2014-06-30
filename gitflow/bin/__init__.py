@@ -762,7 +762,7 @@ class ReleaseCommand(GitFlowCommand):
                 if ref.startswith(prefix) or ref == base_marker:
                     remote_branches.append(ref)
         #+ Collect releases to be deleted.
-        if !args.keep:
+        if not args.keep:
             release_branch = gitflow.get_prefix('release') + version
             try:
                 gitflow.name_or_current('release', version)
