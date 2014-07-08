@@ -32,7 +32,8 @@ from gitflow.exceptions import (GitflowError, AlreadyInitialized,
                                 NotInitialized, BranchTypeExistsError,
                                 BaseNotOnBranch, NoSuchBranchError,
                                 BaseNotAllowed, BranchExistsError,
-                                IllegalVersionFormat, InconsistencyDetected)
+                                IllegalVersionFormat, InconsistencyDetected,
+                                OperationsError)
 import gitflow.pivotal as pivotal
 import gitflow.review as review
 from gitflow.review import (BranchReview, ReviewNotAcceptedYet,
@@ -626,6 +627,12 @@ class ReleaseCommand(GitFlowCommand):
         assert args.version
         pivotal.check_version_format(args.version)
 
+        gitflow = GitFlow()
+
+        # Check the repository if CircleCI is enabled.
+        if gitflow.is_circleci_enabled():
+            _try_deploy_circleci(gitflow, args.version)
+
         # Check if all stories were QA'd
         pt_release = pivotal.Release(args.version)
         print('Checking Pivotal Tracker stories ... ')
@@ -709,7 +716,7 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         #+++ Merge release branch into develop and master
-        sys.stdout.write('Finishing release branch %s ... ' % version)
+        sys.stdout.write('Merging release branch %s ... ' % version)
         tagging_info = None
         if not args.notag:
             tagging_info = dict(
@@ -718,8 +725,8 @@ class ReleaseCommand(GitFlowCommand):
                 message=args.message)
         gitflow.finish('release', version,
                                  fetch=(not args.no_fetch), rebase=False,
-                                 keep=args.keep, force_delete=False,
-                                 tagging_info=tagging_info, push=(not args.no_push))
+                                 keep=True, force_delete=False,
+                                 tagging_info=tagging_info, push=False)
         print('OK')
 
         #+++ Close all relevant review requests
@@ -755,15 +762,16 @@ class ReleaseCommand(GitFlowCommand):
                 if ref.startswith(prefix) or ref == base_marker:
                     remote_branches.append(ref)
         #+ Collect releases to be deleted.
-        release_branch = gitflow.get_prefix('release') + version
-        try:
-            gitflow.nameprefix_or_current('release', version)
-            local_branches.append(release_branch)
-        except NoSuchBranchError:
-            pass
-        if release_branch in refs:
-            remote_branches.append(release_branch)
-        print 'OK'
+        if not args.keep:
+            release_branch = gitflow.get_prefix('release') + version
+            try:
+                gitflow.name_or_current('release', version)
+                local_branches.append(release_branch)
+            except NoSuchBranchError:
+                pass
+            if release_branch in refs:
+                remote_branches.append(release_branch)
+            print 'OK'
 
         #+++ Delete local and remote branches that are a part of this release
         sys.stdout.write('Checking out %s ... ' % gitflow.develop_name())
@@ -1103,12 +1111,31 @@ class DeployCommand(GitFlowCommand):
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
+def _try_deploy_circleci(gitflow, version):
+    # The repository must be completely clean for this step to proceed.
+    try:
+        output = sub.check_output(["git", "status", "--porcelain"])
+    except sub.CalledProcessError as ex:
+        sys.stderr.write("git status --porcelain failed\n")
+        raise OperationsError(ex)
+
+    if len(output) != 0:
+        print("The repository is dirty!")
+        print("git status --porcelain:")
+        print(output)
+        print("Commit or stash your changes, then retry.")
+        raise SystemExit("Operation canceled.")
+
+    # The release branch must exist.
+    gitflow.name_or_current("release", version)
+
 def _deploy_circleci(gitflow, branches, environ):
     repo = gitflow.repo
     git = repo.git
 
-    sys.stdout.write('Circle CI integration enabled ... ')
+    sys.stdout.write('Pushing branch for CircleCI  ... ')
     sys.stdout.flush()
+
     # Make sure that the client branch is pointing to the right place.
     if environ == 'client':
         release = branches['qa']
@@ -1120,6 +1147,7 @@ def _deploy_circleci(gitflow, branches, environ):
             git.checkout(current)
         else:
             git.branch(gitflow.client_name(), release)
+
     # Push the relevant branch to deploy it.
     branch = branches[environ]
     sys.stdout.write('pushing {0} ... '.format(branch))
