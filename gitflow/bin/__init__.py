@@ -784,11 +784,13 @@ class ReleaseCommand(GitFlowCommand):
             print '    ' + branch
         print '    OK'
         #+ Delete remote branches.
-        print 'Deleting remote branches ...'
+        print 'Deleting remote branches and pushing the rest ...'
         for branch in remote_branches:
             print '    ' + branch
         refspecs = [(':' + b) for b in remote_branches]
-        git.push(str(origin), *refspecs)
+        refspecs.append(gitflow.develop_name())
+        refspecs.append(gitflow.master_name())
+        git.push(str(origin), '--tags', *refspecs)
         print '    OK'
 
     #- track
