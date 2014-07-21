@@ -1110,7 +1110,7 @@ class DeployCommand(GitFlowCommand):
             branches['client'] = gitflow.client_name()
             _deploy_circleci(gitflow, branches, args.environ)
         else:
-            branches['client'] = gitflow.managers['release'].full_name(args.version),
+            branches['client'] = gitflow.managers['release'].full_name(args.version)
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
