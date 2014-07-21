@@ -1103,13 +1103,14 @@ class DeployCommand(GitFlowCommand):
         branches = {
                 'develop':    gitflow.develop_name(),
                 'qa':         gitflow.managers['release'].full_name(args.version),
-                'client':     gitflow.client_name(),
                 'production': gitflow.master_name(),
         }
 
         if gitflow.is_circleci_enabled():
+            branches['client'] = gitflow.client_name()
             _deploy_circleci(gitflow, branches, args.environ)
         else:
+            branches['client'] = gitflow.managers['release'].full_name(args.version),
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
