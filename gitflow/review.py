@@ -123,8 +123,8 @@ class BranchReview(object):
         else:
             sys.stdout.write('new review ... ')
 
-        cmd.append('--summary=' + str(summary))
-        cmd.append('--description=' + str(desc))
+        cmd.append('--summary=' + summary.decode('utf8'))
+        cmd.append('--description=' + desc.decode('utf8'))
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
