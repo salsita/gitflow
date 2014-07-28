@@ -1122,7 +1122,12 @@ def _try_deploy_circleci(gitflow, version):
         sys.stderr.write("git status --porcelain failed\n")
         raise OperationsError(ex)
 
-    if len(output) != 0:
+    lines = output.split('\n')
+    for line in lines:
+        # The only allowed files are these that are untracked. Any other scenario
+        # can lead to git reset failing for one reason or another.
+        if line.startswith('??'):
+            continue
         print("The repository is dirty!")
         print("git status --porcelain:")
         print(output)
@@ -1146,7 +1151,8 @@ def _deploy_circleci(gitflow, branches, environ):
         if gitflow.client_exists():
             current = gitflow.current_branch()
             git.checkout(gitflow.client_name())
-            git.reset('--hard', release)
+            # Use --keep to make sure that local modification are not discarded.
+            git.reset('--keep', release)
             git.checkout(current)
         else:
             git.branch(gitflow.client_name(), release)
