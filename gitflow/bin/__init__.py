@@ -715,7 +715,7 @@ class ReleaseCommand(GitFlowCommand):
         rb_release.try_finish(args.ignore_missing_reviews)
         print('OK')
 
-        #+++ Merge release branch into develop and master
+        #+++ Merge the release branch into develop and master
         sys.stdout.write('Merging release branch %s ... ' % version)
         tagging_info = None
         if not args.notag:
@@ -730,9 +730,16 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         #+++ Close all relevant review requests
-        sys.stdout.write('Submitting all relevant review requests  ... ')
-        rb_release.finish()
-        print('OK')
+        try:
+            sys.stdout.write('Submitting all relevant review requests  ... ')
+            rb_release.finish()
+            print('OK')
+        except Exception as ex:
+            print('FAIL')
+            sys.stdout.write('Deleting the release tag  ... ')
+            git.tag('-d', version)
+            print('OK')
+            raise ex
 
         #+++ Collect local and remote branches to be deleted
         sys.stdout.write('Collecting branches to be deleted ... ')
