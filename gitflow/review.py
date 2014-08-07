@@ -1,4 +1,5 @@
 import re
+import datetime
 import subprocess as sub
 import difflib as diff
 import gitflow.pivotal as pivotal
@@ -40,49 +41,28 @@ def _get_branch(identifier, name):
     name = _gitflow.nameprefix_or_current(identifier, name)
     return prefix + name
 
+def _get_existing_review_requests(story):
+    pass
 
 def list_repos():
     repos = _get_client().repositories()
     return [(r.id, r.name) for r in repos]
 
 
-class BranchReview(object):
-    def __init__(self, branch, rev_range=None):
-        assert rev_range is None or len(rev_range) == 2
-        self._branch = branch
+class ReviewRequestSet(object):
+    # ReviewRequestSet represents all the review requests associated with
+    # one particular Pivotal Tracker story.
+    def __init__(self, story):
+        self._story = story
         self._client = _get_client()
-        if rev_range:
-            self._rev_range = rev_range
 
-    def __getattr__(self, name):
-        if name == '_rid':
-            self._update_from_existing_review()
-            return self._rid
-        if name == '_summary':
-            return None
-        if name == '_description':
-            return None
-        raise AttributeError
-
-    def get_id(self):
-        assert self._rid
-        return self._rid
-
-    def get_url(self):
-        if self._url:
-            return self._url
-        elif self.get_id():
-            return '{0}r/{1}/'.format(_get_url(), self.get_id())
-        else:
-            raise AttributeError('Neither review id nor review url is defined.')
-
-    def post(self, story, summary_from_story=True):
-        assert self._rev_range
+    def add_review_request(self, from_rev, to_rev, summary_from_story=False):
         cmd = ['rbt', 'post',
-               '--branch', self._branch,
-               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
+               '--branch', self._branch]
 
-        self._check_for_existing_review()
+        last = self._get_last_rr()
+        if last != None:
+            cmd.append('--depends-on={0}'.format(last.id))
 
         desc_cmd = ['git', 'log',
                     "--pretty="
@@ -92,7 +72,7 @@ class BranchReview(object):
                         "%n"
                         "%s%n%n"
                         "%b",
-                    '{0[0]}...{0[1]}'.format(self._rev_range)]
+                    '{0}...{1}'.format(from_rev, to_rev)]
         desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
         desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
 
@@ -102,29 +82,9 @@ class BranchReview(object):
             # 7 is the magical offset to get the first commit subject
             summary = desc.split('\n')[7]
 
-        # If we are updating an existing review, reuse its summary.
-        if self._summary is not None:
-            summary = self._summary
-
-        # If we are updating an existing review, reuse part of its description.
-        if self._description is not None:
-            lines = self._description.split('\n')
-            kept_desc = []
-            for line in lines:
-                if line.startswith('> Story being reviewed'):
-                    break
-                kept_desc.append(line.decode('utf-8'))
-            desc = u'\n'.join(kept_desc) + u'\n' + desc.decode('utf-8')
-
-        if self._rid:
-            sys.stdout.write('updating %s ... ' % str(self._rid))
-            cmd.append('--review-request-id')
-            cmd.append(str(self._rid))
-        else:
-            sys.stdout.write('new review ... ')
-
         cmd.append('--summary=' + summary.decode('utf8'))
         cmd.append('--description=' + desc.decode('utf8'))
+        cmd.append('{0}...{1}'.format(from_rev, to_rev))
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
@@ -147,10 +107,6 @@ class BranchReview(object):
             print('and see what happens.')
             raise PostReviewError('Failed to post review request.')
 
-        # Use list comprehension to get rid of emply trailing strings.
-        self._url = [line for line in outdata.split('\n') if line != ''][-1]
-        self._rid = [f for f in self._url.split('/') if f != ''][-1]
-
     def verify_submit(self):
         assert self._status
         if self._status == 'submitted':
@@ -161,34 +117,56 @@ class BranchReview(object):
                                        % str(self._rid))
 
     def submit(self):
-        assert self._status
-        if self._status == 'submitted':
-            return
-        self._update(status='submitted')
+        rrs = self._get_existing_rrs()
+        for rr in rrs:
+            if self._status == 'submitted':
+                continue
+            self._update(rr, status='submitted')
 
     def is_accepted(self):
         assert self._rid
         reviews = self._client.get_reviews_for_review_request(self._rid)
         return any(r['ship_it'] for r in reviews)
 
-    def _update(self, **kwargs):
-        self._client.update_request(self.get_id(), fields=kwargs, publish=True)
+    def _update(self, rr, **kwargs):
+        self._client.update_request(rr.id, fields=kwargs, publish=True)
 
-    def _branch_to_rid(self, branch):
-        options = dict(repository=_get_repo_id())
-        reviews = self._client.get_review_requests(options=options,
-                                                   branch=self._branch)
-        if len(reviews) > 1:
-            raise MultipleReviewRequestsForBranch(self._branch)
-        elif len(reviews) == 1:
-            r = reviews[0]
-            self._summary = r['summary']
-            self._description = r['description']
-            return r['id']
+    def _get_last_rr(self):
+        # Get existing review requests.
+        rrs = self._get_existing_rrs()
+        if len(rrs) == 0:
+            return None
 
-    def _check_for_existing_review(self):
-        assert self._branch
-        self._rid = self._branch_to_rid(self._branch)
+        # Choose the most recent review request from the set.
+        last = rss[0]
+        last_timestamp = datetime.strftime(last.time_added, '%Y-%m-%d %H:%M:%S')
+        for rr in rrs[1:]:
+            timestamp = datetime.strftime(last.time_added, '%Y-%m-%d %H:%M:%S')
+            if timestamp > last_timestamp:
+                last = rr
+                last_timestamp = timestamp
+        return last
+
+    def _get_existing_rrs(self):
+        # Reuse what was already downloaded, if possible.
+        if self._rrs:
+            return self._rrs
+
+        # Unfortunately here we have to fetch all the review requests
+        # associated with the project repository since we need to check
+        # the branch prefix. The good thing is that we only fetch the review
+        # requests owned by the user that is running gitflow.
+        options = {
+                'repository': _get_repo_id(),
+                'from-user': _get_rb_username(),
+                'max-results': 200
+        }
+        candidates = self._client.get_review_requests(options=options)
+
+        # Get only the branches matching the same story prefix.
+        branch_prefix = self._get_branch_prefix()
+        self._rrs = [rr for rr in candidates if rr.branch.startswith(branch_prefix)]
+        return self._rrs
 
     @classmethod
     def from_prefix(cls, prefix):
@@ -265,110 +243,3 @@ class Release(object):
         assert self._reviews is not None
         for review in self._reviews:
             review.submit()
-
-def post_review(self, identifier, name, post_new):
-    mgr = self.managers[identifier]
-    branch = mgr.by_name_prefix(name)
-
-    sys.stdout.write("Walking the Git reflogs to find review request parent (might "
-        "take a couple seconds)...\n")
-    sys.stdout.flush()
-
-    if not post_new:
-        parent = find_last_patch_parent(self.develop_name(), branch.name)
-        if not parent:
-            print ("Could not find any merges into %s, using full patch." %
-                self.develop_name())
-    if not parent:
-        parent = get_branch_parent(branch.name)
-
-    if not parent:
-        raise GitflowError("Could not find parent for branch '%s'!" %
-            branch.name)
-
-    story_id = pivotal.get_story_id_from_branch_name(branch.name)
-    story = pivotal.get_story(story_id)
-
-    cmd = ['post-review', '--branch', branch.name,
-        '--guess-description',
-        '--parent', self.develop_name(),
-        '--revision-range', '%s:%s' % (parent, branch.name)]
-
-    if post_new:
-        # Create a new request.
-        cmd += ['--summary', "'%s'" % story['story']['name']]
-    else:
-        req = rb_ext.get_latest_review_request_for_branch(
-            _gitflow.get('reviewboard.server'), branch.name)
-        if req:
-            # Update an existing request.
-            cmd += ['-r', str(req['id'])]
-        else:
-            # Create a new request.
-            cmd += ['--summary', "'%s'" % story['story']['name']]
-
-    print "Posting a review using command: %s" % ' '.join(cmd)
-    proc = sub.Popen(cmd, stdout=sub.PIPE)
-    (out, err) = proc.communicate()
-    # Post a comment to the relevant Pivotal Tracker story (to make it easier to
-    # track review requests).
-    review_url = out.strip().split('\n')[-1]
-    if not review_url.startswith('http'):
-        print ("Could not determine review URL (probably an error when "
-            "posting the review")
-        return
-    if '-r' in cmd:
-        comment = "Review request %s updated."
-    else:
-        comment = "Review request posted: %s"
-    pivotal.add_comment_to_story(story_id, comment % review_url)
-
-core.GitFlow.post_review = post_review
-
-
-def get_branch_parent(branch_name):
-    proc = sub.Popen(
-        ['git', 'reflog', 'show', branch_name],
-        env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
-    (out, err) = proc.communicate()
-    lines = out.strip().split('\n')
-    parent = None
-    for line in lines:
-        parts = line.split(' ')
-        if len(parts) >= 3 and (parts[2]).startswith('branch'):
-            parent = parts[0]
-    if not parent:
-        parent = lines[-1].split(' ')[0]
-    return parent
-
-
-def find_last_patch_parent(develop_name, branch_name):
-    proc = sub.Popen(
-        ['git', 'reflog', 'show', develop_name],
-        env={'GIT_PAGER': 'cat'}, stdout=sub.PIPE)
-    (out, err) = proc.communicate()
-    lines = out.strip().split('\n')
-    lines = [l for l in lines if ("merge %s" % branch_name) in l]
-    if len(lines) < 2:
-        return None
-    else:
-        # Get the hash of the second most recent merge.
-        return lines[1].split(' ')[0]
-
-def get_feature_ancestor(feature, upstream):
-    repo = _gitflow.repo
-
-    # Check if we are not looking for the ancestor of the same commit.
-    # If that is the case, the algorithm used further fails.
-    fc = repo.commit(feature)
-    uc = repo.commit(upstream)
-    if fc == uc:
-        raise EmptyDiff('{0} and {1} are pointing to the same commit.' \
-                .format(upstream, feature))
-
-    base_marker = _gitflow.managers['feature'].base_marker_name(feature)
-    for ref in repo.refs:
-        if str(ref) == base_marker:
-            return ref
-
-    raise AncestorNotFound('Base marker missing for ' + feature)
