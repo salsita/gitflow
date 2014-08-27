@@ -1193,7 +1193,7 @@ def _try_deploy_circleci(gitflow, version):
     for line in lines:
         # The only allowed files are these that are untracked. Any other scenario
         # can lead to git reset failing for one reason or another.
-        if line.startswith('??'):
+        if line == '' or line.startswith('??'):
             continue
         print("The repository is dirty!")
         print("git status --porcelain:")
