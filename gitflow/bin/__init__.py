@@ -715,8 +715,13 @@ class ReleaseCommand(GitFlowCommand):
         rb_release.try_finish(args.ignore_missing_reviews)
         print('OK')
 
-        #+++ Merge release branch into develop and master
+        #+++ Merge the release branch into develop and master
         sys.stdout.write('Merging release branch %s ... ' % version)
+
+        # Save the current position of master and develop in case we need to roll back.
+        master_hexsha = _branch_hexsha(gitflow.master_name())
+        develop_hexsha = _branch_hexsha(gitflow.develop_name())
+
         tagging_info = None
         if not args.notag:
             tagging_info = dict(
@@ -730,9 +735,15 @@ class ReleaseCommand(GitFlowCommand):
         print('OK')
 
         #+++ Close all relevant review requests
-        sys.stdout.write('Submitting all relevant review requests  ... ')
-        rb_release.finish()
-        print('OK')
+        try:
+            sys.stdout.write('Submitting all relevant review requests ... ')
+            rb_release.finish()
+            print('OK')
+        except Exception as ex:
+            print('FAIL')
+            ReleaseCommand.rollback(tag=args.version,
+                    master_hexsha=master_hexsha, develop_hexsha=develop_hexsha)
+            raise ex
 
         #+++ Collect local and remote branches to be deleted
         sys.stdout.write('Collecting branches to be deleted ... ')
@@ -774,24 +785,42 @@ class ReleaseCommand(GitFlowCommand):
             print 'OK'
 
         #+++ Delete local and remote branches that are a part of this release
-        sys.stdout.write('Checking out %s ... ' % gitflow.develop_name())
-        git.checkout(gitflow.develop_name())
-        print 'OK'
+        sys.stdout.write('Checking out {0} ...'.format(gitflow.develop_name()))
+        try:
+            git.checkout(gitflow.develop_name())
+        except Exception as ex:
+            print('FAIL')
+            ReleaseCommand.rollback(tag=args.version,
+                    master_hexsha=master_hexsha, develop_hexsha=develop_hexsha)
+            raise ex
+        print('OK')
         #+ Delete local branches.
-        print 'Deleting local branches ...'
-        for branch in local_branches:
-            git.branch('-D', branch)
-            print '    ' + branch
-        print '    OK'
+        print('Deleting local branches ...')
+        try:
+            for branch in local_branches:
+                print('    ' + branch)
+                git.branch('-D', branch)
+        except Exception as ex:
+            print('FAIL (the last branch printed)')
+            ReleaseCommand.rollback(tag=args.version,
+                    master_hexsha=master_hexsha, develop_hexsha=develop_hexsha)
+            raise ex
+        print('    OK')
         #+ Delete remote branches.
-        print 'Deleting remote branches and pushing the rest ...'
+        print('Deleting remote branches and pushing the rest ...')
         for branch in remote_branches:
-            print '    ' + branch
+            print('    ' + branch)
         refspecs = [(':' + b) for b in remote_branches]
         refspecs.append(gitflow.develop_name())
         refspecs.append(gitflow.master_name())
-        git.push(str(origin), '--tags', *refspecs)
-        print '    OK'
+        try:
+            git.push(str(origin), '--tags', *refspecs)
+        except Exception as ex:
+            print('    FAIL')
+            ReleaseCommand.rollback(tag=args.version,
+                    master_hexsha=master_hexsha, develop_hexsha=develop_hexsha)
+            raise ex
+        print('    OK')
 
     #- track
     @classmethod
@@ -814,6 +843,44 @@ class ReleaseCommand(GitFlowCommand):
         print "- A new remote tracking branch '%s' was created" % branch
         print "- You are now on branch '%s'" % branch
         print
+
+    @staticmethod
+    def rollback(tag=None, master_hexsha=None, develop_hexsha=None):
+        gitflow = GitFlow()
+
+        try:
+            if not tag is None:
+                sys.stdout.write('Deleting the release tag ... ')
+                gitflow.git.tag('-d', tag)
+                print ('OK')
+        except Exception:
+            print ('FAIL')
+
+        try:
+            if not master_hexsha is None:
+                sys.stdout.write('Resetting master to the original position ... ')
+                _reset_branch(gitflow.master_name(), master_hexsha)
+                print('OK')
+        except Exception:
+            print ('FAIL')
+
+        try:
+            if not develop_hexsha is None:
+                sys.stdout.write('Resetting develop to the original position ... ')
+                _reset_branch(gitflow.develop_name(), develop_hexsha)
+                print ('OK')
+        except Exception:
+            print ('FAIL')
+
+
+def _branch_hexsha(branch):
+    return sub.check_output(['git', 'rev-parse', branch]).replace('\n', '')
+
+def _reset_branch(branch, hexsha):
+    current = sub.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).replace('\n', '')
+    sub.check_output(['git', 'checkout', branch], stderr=sub.STDOUT)
+    sub.check_output(['git', 'reset', '--keep', hexsha], stderr=sub.STDOUT)
+    sub.check_output(['git', 'checkout', current], stderr=sub.STDOUT)
 
 
 class HotfixCommand(GitFlowCommand):
@@ -1122,7 +1189,12 @@ def _try_deploy_circleci(gitflow, version):
         sys.stderr.write("git status --porcelain failed\n")
         raise OperationsError(ex)
 
-    if len(output) != 0:
+    lines = output.split('\n')
+    for line in lines:
+        # The only allowed files are these that are untracked. Any other scenario
+        # can lead to git reset failing for one reason or another.
+        if line.startswith('??'):
+            continue
         print("The repository is dirty!")
         print("git status --porcelain:")
         print(output)
@@ -1146,7 +1218,8 @@ def _deploy_circleci(gitflow, branches, environ):
         if gitflow.client_exists():
             current = gitflow.current_branch()
             git.checkout(gitflow.client_name())
-            git.reset('--hard', release)
+            # Use --keep to make sure that local modification are not discarded.
+            git.reset('--keep', release)
             git.checkout(current)
         else:
             git.branch(gitflow.client_name(), release)
