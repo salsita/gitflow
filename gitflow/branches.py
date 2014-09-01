@@ -369,6 +369,18 @@ class FeatureBranchManager(BranchManager):
 
         return marker
 
+    def iter_markers(self, remote=False):
+        if remote:
+            refs = self.gitflow.repo.refs
+            prefix = self.gitflow.origin_name() + '/base_feature/'
+        else:
+            refs = self.gitflow.repo.branches
+            prefix = 'base_feature/'
+
+        for r in refs:
+            if r.name.startswith(prefix):
+                yield r
+
 
 class ReleaseBranchManager(BranchManager):
     identifier = 'release'

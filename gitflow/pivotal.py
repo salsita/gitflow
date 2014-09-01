@@ -30,14 +30,14 @@ def _get_version_matcher():
 def _get_token():
     return _gitflow._safe_get('gitflow.pt.token')
 
-def _get_client():
+def get_client():
     return pt.PivotalClient(token=_gitflow._safe_get('gitflow.pt.token'))
 
 def _get_project_id():
     return _gitflow._safe_get('gitflow.pt.projectid')
 
-def _iter_current_stories():
-    client = _get_client()
+def iter_current_stories():
+    client = get_client()
     pid = _get_project_id()
     iterations = client.iterations.current(pid)
     if 'iterations' not in iterations:
@@ -48,8 +48,8 @@ def _iter_current_stories():
             if s.is_feature() or s.is_bug():
                 yield s
 
-def _iter_backlog_stories():
-    client = _get_client()
+def iter_backlog_stories():
+    client = get_client()
     pid = _get_project_id()
     iterations = client.iterations.backlog(pid)
     if 'iterations' not in iterations:
@@ -60,7 +60,7 @@ def _iter_backlog_stories():
             if s.is_feature() or s.is_bug():
                 yield s
 
-def _iter_stories():
+def iter_stories():
     # Load the PT include/exclude labels from git config.
     # Use string.lower() since PT labels are case insensitive.
     include = _gitflow.get('gitflow.pt.includelabel', None)
@@ -72,7 +72,7 @@ def _iter_stories():
         exclude = exclude.lower()
         exclude = exclude.split(',')
 
-    for s in itertools.chain(_iter_current_stories(), _iter_backlog_stories()):
+    for s in itertools.chain(iter_current_stories(), iter_backlog_stories()):
         if include and not s.is_labeled(include):
             continue
         if exclude and any([l for l in exclude if s.is_labeled(l)]):
@@ -80,13 +80,13 @@ def _iter_stories():
         yield s
 
 def list_projects():
-    projects = _get_client().projects.all()['projects']
+    projects = get_client().projects.all()['projects']
     return [(p['id'], p['name']) for p in projects]
 
 class Story(object):
     def __init__(self, story_id, _skip_story_download=False):
         self._project_id = _get_project_id()
-        self._client = _get_client()
+        self._client = get_client()
         if _skip_story_download:
             return
         payload = self._client.stories.get(self._project_id, story_id)
@@ -300,7 +300,7 @@ class Release(object):
 
         if _skip_story_download:
             return
-        self._current_stories = list(_iter_current_stories())
+        self._current_stories = list(iter_current_stories())
 
     def __iter__(self):
         for story in self._current_stories:
@@ -404,7 +404,7 @@ class Release(object):
     @classmethod
     def dump_all_releases(cls):
         stories = dict()
-        for story in _iter_current_stories():
+        for story in iter_current_stories():
             if story.is_feature() or story.is_bug():
                 release = story.get_release()
                 if release:
@@ -460,7 +460,7 @@ def prompt_user_to_select_story(match=None):
 
     index = ""
     print Style.DIM + "--------- Stories -----------" + Style.RESET_ALL
-    for story in _iter_stories():
+    for story in iter_stories():
         if story.is_feature() and not story.is_estimated():
             continue
         # You do not start a story if its branch is present or it is
@@ -639,6 +639,11 @@ def get_story_id_from_branch_name(identifier, branch_name):
         raise GitflowError('Weird branch name format: %s' % branch_name)
     return match.groups()[0]
 
+
+BASE_MARKER_PREFIX = 'base_feature/'
+
+def get_story_id_from_base_marker(base):
+    return base[len(BASE_MARKER_PREFIX):]
 
 def show_release_summary(gitflow):
     current = get_iterations()[0]
