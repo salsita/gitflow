@@ -27,7 +27,7 @@ install_requires = [
     'jenkinsapi==0.2.12',
     'poster==0.8.1',
     'python-dateutil',
-    'rbtools==0.5.7',
+    'rbtools==0.6.2',
     'setuptools',
     'simplejson==3.1.2',
     'xmlbuilder==1.0'

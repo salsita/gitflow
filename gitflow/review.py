@@ -86,8 +86,7 @@ class BranchReview(object):
                 return unicode(s, encoding='utf8')
 
         cmd = ['rbt', 'post',
-               '--branch', self._branch,
-               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
+               '--branch', self._branch]
 
         self._check_for_existing_review()
 
@@ -132,6 +131,7 @@ class BranchReview(object):
 
         cmd.append(u'--summary=' + to_unicode(summary))
         cmd.append(u'--description=' + to_unicode(desc))
+        cmd.extend([str(rev) for rev in self._rev_range])
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
