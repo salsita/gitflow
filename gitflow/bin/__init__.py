@@ -124,6 +124,7 @@ class FeatureCommand(GitFlowCommand):
         cls.register_list(sub)
         cls.register_start(sub)
         cls.register_finish(sub)
+        cls.register_purge(sub)
         cls.register_checkout(sub)
         cls.register_diff(sub)
         cls.register_rebase(sub)
@@ -353,6 +354,95 @@ class FeatureCommand(GitFlowCommand):
         #if not args.no_push:
         #    git.push(gitflow.origin_name(), upstream)
         #print 'OK'
+
+    #- purge
+    @classmethod
+    def register_purge(cls, parent):
+        p = parent.add_parser('purge',
+                help='Purge accepted feature branches.')
+        p.set_defaults(func=cls.run_purge)
+
+    @staticmethod
+    def run_purge(args):
+        gitflow = GitFlow()
+        git = gitflow.git
+        mgr = gitflow.managers['feature']
+        origin_name = gitflow.origin_name()
+
+        def prompt_user(question):
+            return raw_input(question).strip().lower() == 'y'
+
+        story_cache = {}
+        def get_story(story_id):
+            try:
+                return story_cache[story_id]
+            except KeyError:
+                sys.stdout.write('Fetching story {0} ... '.format(story_id))
+                sys.stdout.flush()
+                story = pivotal.Story(story_id)
+                story_cache[story_id] = story
+                print('')
+                return story
+
+        def get_confirmed_branch_set(features, markers):
+            to_delete = set()
+            # Go through the branches and ask the user.
+            for branch in features:
+                story_id = pivotal.get_story_id_from_branch_name('feature', branch)
+                story = get_story(story_id)
+                if not story.is_accepted():
+                    continue
+                if not prompt_user('Delete {0}? [y/N]: '.format(branch)):
+                    continue
+                to_delete.add(branch)
+                # Check the associated base markers as well.
+                base = mgr.base_marker_name(branch)
+                if base in markers:
+                    to_delete.add(base)
+            # Check the markers that were potentially left behind.
+            for base in markers:
+                if base in to_delete:
+                    continue
+                story_id = pivotal.get_story_id_from_base_marker(base)
+                story = get_story(story_id)
+                if not story.is_accepted():
+                    continue
+                if not prompt_user('Delete {0} (base marker left behind)? [y/N]: '.format(base)):
+                    continue
+                to_delete.add(base)
+            return to_delete
+
+        print('---> Local branches')
+        local_branches = [str(b) for b in mgr.iter()]
+        local_markers = [str(b) for b in mgr.iter_markers()]
+        to_delete = get_confirmed_branch_set(local_branches, local_markers)
+        if len(to_delete) != 0:
+            print('')
+            for branch in to_delete:
+                sys.stdout.write('Deleting {} ... '.format(branch))
+                sys.stdout.flush()
+                try:
+                    git.branch('-d', branch)
+                    print('OK')
+                except Exception as ex:
+                    sys.stderr.write('ERR: ' + str(ex) + '\n')
+        else:
+            print('\nNo local branches selected, skipping...')
+
+        print('\n---> Remote branches')
+        remote_branches = [str(b)[len(origin_name)+1:] for b in mgr.iter(remote=True)]
+        remote_markers = [str(b)[len(origin_name)+1:] for b in mgr.iter_markers(remote=True)]
+        to_delete = get_confirmed_branch_set(remote_branches, remote_markers)
+        if len(to_delete) != 0:
+            to_push = []
+            for branch in to_delete:
+                to_push.append(':' + branch)
+            sys.stdout.write('\nDeleting the selected remote branches (push) ... ')
+            sys.stdout.flush()
+            gitflow.origin().push(to_push)
+            print('OK')
+        else:
+            print('\nNo remote branches selected, skipping...')
 
     #- checkout
     @classmethod
@@ -829,7 +919,6 @@ class ReleaseCommand(GitFlowCommand):
                 help='Track a release branch from origin.')
         p.set_defaults(func=cls.run_track)
         p.add_argument('version', action=NotEmpty)
-
 
     @staticmethod
     def run_track(args):
