@@ -85,6 +85,12 @@ class BranchReview(object):
             except UnicodeDecodeError:
                 return unicode(s, encoding='utf8')
 
+        def to_string(us):
+            try:
+                return str(us)
+            except UnicodeEncodeError:
+                return us.encode(encoding='utf8')
+
         cmd = ['rbt', 'post',
                '--branch', self._branch]
 
@@ -132,6 +138,7 @@ class BranchReview(object):
         cmd.append(u'--summary=' + to_unicode(summary))
         cmd.append(u'--description=' + to_unicode(desc))
         cmd.extend([str(rev) for rev in self._rev_range])
+        cmd = [to_string(itm) for itm in cmd]
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
