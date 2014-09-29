@@ -78,9 +78,21 @@ class BranchReview(object):
 
     def post(self, story, summary_from_story=True):
         assert self._rev_range
+
+        def to_unicode(s):
+            try:
+                return unicode(s)
+            except UnicodeDecodeError:
+                return unicode(s, encoding='utf8')
+
+        def to_string(us):
+            try:
+                return str(us)
+            except UnicodeEncodeError:
+                return us.encode(encoding='utf8')
+
         cmd = ['rbt', 'post',
-               '--branch', self._branch,
-               '--revision-range={0[0]}:{0[1]}'.format(self._rev_range)]
+               '--branch', self._branch]
 
         self._check_for_existing_review()
 
@@ -93,8 +105,8 @@ class BranchReview(object):
                         "%s%n%n"
                         "%b",
                     '{0[0]}...{0[1]}'.format(self._rev_range)]
-        desc_prefix = '> Story being reviewed: {0}\n'.format(story.get_url())
-        desc = desc_prefix + '\nCOMMIT LOG\n' + sub.check_output(desc_cmd)
+        desc_prefix = u'> Story being reviewed: {0}\n'.format(story.get_url())
+        desc = desc_prefix + u'\nCOMMIT LOG\n' + to_unicode(sub.check_output(desc_cmd))
 
         if summary_from_story:
             summary = story.get_name()
@@ -113,8 +125,8 @@ class BranchReview(object):
             for line in lines:
                 if line.startswith('> Story being reviewed'):
                     break
-                kept_desc.append(line.decode('utf-8'))
-            desc = u'\n'.join(kept_desc) + u'\n' + desc.decode('utf-8')
+                kept_desc.append(to_unicode(line))
+            desc = u'\n'.join(kept_desc) + u'\n' + to_unicode(desc)
 
         if self._rid:
             sys.stdout.write('updating %s ... ' % str(self._rid))
@@ -123,8 +135,10 @@ class BranchReview(object):
         else:
             sys.stdout.write('new review ... ')
 
-        cmd.append('--summary=' + summary.decode('utf8'))
-        cmd.append('--description=' + desc.decode('utf8'))
+        cmd.append(u'--summary=' + to_unicode(summary))
+        cmd.append(u'--description=' + to_unicode(desc))
+        cmd.extend([str(rev) for rev in self._rev_range])
+        cmd = [to_string(itm) for itm in cmd]
 
         p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
         (outdata, errdata) = p.communicate()
