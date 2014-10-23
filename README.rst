@@ -43,15 +43,15 @@ of how it works:
 Installing salsita-gitflow
 ==========================
 
-You can install ``salsita gitflow``, using::
+You can install ``salsita-gitflow`` using::
 
-    pip install salsita-gitflow
+    pip install --allow-external rbtools --allow-unverified rbtools salsita-gitflow
 
-Or, if you'd like to use ``easy_install`` instead::
+To upgrade the package to the current version, just add ``-U`` flag to the command::
 
-    easy_install salsita-gitflow
+    pip install -U --allow-external rbtools --allow-unverified rbtools salsita-gitflow
 
-``salsita-gitflow`` requires Python 2.7.
+Please not that ``salsita-gitflow`` requires Python 2.7.
 
 Setting it up
 -------------
