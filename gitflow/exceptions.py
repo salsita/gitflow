@@ -18,6 +18,7 @@ class OperationsError(GitflowError): pass
 class PrefixNotUniqueError(OperationsError): pass
 class MergeError(OperationsError): pass
 class PostReviewError(OperationsError): pass
+class SubmitReviewError(OperationsError): pass
 
 class StatusError(GitflowError): pass
 class WorkdirIsDirtyError(StatusError): pass

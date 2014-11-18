@@ -9,7 +9,7 @@ import sys
 from gitflow.core import GitFlow
 from gitflow.exceptions import (GitflowError, MultipleReviewRequestsForBranch,
                                 NoSuchBranchError, AncestorNotFound, EmptyDiff,
-                                PostReviewError)
+                                PostReviewError, SubmitReviewError)
 
 class ReviewRequestLimitError(GitflowError):
     def __str__(self):
@@ -178,7 +178,19 @@ class BranchReview(object):
         assert self._status
         if self._status == 'submitted':
             return
-        self._update(status='submitted')
+
+        cmd = ['rbt', 'close', '--close-type', 'submitted', str(self.get_id())]
+        p = sub.Popen(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+        (outdata, errdata) = p.communicate()
+
+        if p.returncode != 0:
+            print('>>>> rbt error output')
+            print(errdata)
+            print('<<<< rbt error output')
+            print('If the error output is not sufficient, execute')
+            print('\n    $ rbt close --debug --close-type submitted {0}\n'.format(self.get_id()))
+            print('and see what happens.')
+            raise SubmitReviewError('Failed to submit review request.')
 
     def is_accepted(self):
         assert self._rid
