@@ -134,7 +134,9 @@ class Story(object):
         return self.get_state() == 'started'
 
     def is_unstarted(self):
-        return self.get_state() == 'unstarted' or self.get_state() == 'unscheduled'
+        return self.get_state() == 'unstarted' \
+            or self.get_state() == 'unscheduled' \
+            or self.get_state() == 'planned'
 
     def set_me_as_owner(self):
         headers = {'X-TrackerToken': _get_token()}
