@@ -23,7 +23,7 @@ install_requires = [
     'colorama==0.2.5',
     'gitdb>=0.5.1',
     'GitPython>=0.3.2c1',
-    'httplib2==0.8',
+    'httplib2==0.9.1',
     'jenkinsapi==0.2.12',
     'poster==0.8.1',
     'python-dateutil',
