@@ -149,9 +149,10 @@ class BranchReview(object):
             print(outdata)
             print('<<<< rbt output')
         else:
-            debug_cmd = ' '.join(cmd[:-2])
-            debug_cmd += " --summary='{0}' --description='{1}' --debug" \
+            debug_cmd = ' '.join(cmd[:-4])
+            debug_cmd += " --summary='{0}' --description='{1}' --debug " \
                          .format(summary, desc_prefix)
+            debug_cmd += ' '.join(cmd[-2:])
             print('FAIL')
             print('>>>> rbt error output')
             print(errdata)
