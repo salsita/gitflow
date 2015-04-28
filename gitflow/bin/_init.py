@@ -220,7 +220,7 @@ def run_default(args):
         else:
             staging_branch = _ask_branch(args,
                 'staging',
-                'stage release for client acceptance (Circle CI only)',
+                'release client acceptance',
                 'release client acceptance',
                 ['client', 'staging'])
 
