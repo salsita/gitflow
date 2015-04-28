@@ -62,6 +62,9 @@ class GitFlow(CoreGitFlow):
     def has_master_configured(self):
         return self._has_configured(self.master)
 
+    def has_staging_configured(self):
+        return self._has_configured(self.staging)
+
     def has_develop_configured(self):
         return self._has_configured(self.develop)
 
@@ -208,6 +211,19 @@ def run_default(args):
             ['develop', 'int', 'integration', 'master'],
             filter=[master_branch])
 
+    #-- Circle CI
+    _ask_name(args, 'circleci.enabled',
+            'Enable Circle CI integration [Y/n]')
+    if gitflow.is_circleci_enabled():
+        if gitflow.has_staging_configured() and not args.force:
+            staging_branch = gitflow.staging_branch()
+        else:
+            staging_branch = _ask_branch(args,
+                'staging',
+                'stage release for client acceptance (Circle CI only)',
+                'release client acceptance',
+                ['client', 'staging'])
+
     if not gitflow.is_initialized() or args.force:
         print
         print "How to name your supporting branch prefixes?"
@@ -220,9 +236,6 @@ def run_default(args):
 
     _ask_name(args, 'release.versionmatcher',
             'Regular expression for matching release numbers')
-
-    _ask_name(args, 'circleci.enabled',
-            'Enable Circle CI integration [Y/n]')
 
     _ask_name(args, 'pagination',
             'Number of stories to list on one page')

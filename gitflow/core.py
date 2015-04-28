@@ -108,6 +108,7 @@ class GitFlow(object):
         self.managers = self._discover_branch_managers()
         self.defaults = {
             'gitflow.branch.master': 'master',
+            'gitflow.branch.staging': 'client',
             'gitflow.branch.develop': 'develop',
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
@@ -244,6 +245,7 @@ Git config '%s' missing, please fill it in by executing
     def is_initialized(self):
         return (self.repo and
                 self.is_set('gitflow.branch.master') and
+                (not self.is_circleci_enabled() or self.is_set('gitflow.branch.staging')) and
                 self.is_set('gitflow.branch.develop') and
                 self.is_set('gitflow.prefix.feature') and
                 self.is_set('gitflow.prefix.release') and
@@ -251,7 +253,6 @@ Git config '%s' missing, please fill it in by executing
                 self.is_set('gitflow.prefix.support') and
                 self.is_set('gitflow.prefix.versiontag') and
                 self.is_set('gitflow.release.versionmatcher') and
-                self.is_set('gitflow.circleci.enabled') and
                 self.is_set('gitflow.pagination'))
 
     def _parse_setting(self, setting):
@@ -310,6 +311,9 @@ Git config '%s' missing, please fill it in by executing
     def master_name(self):
         return self._safe_get('gitflow.branch.master')
 
+    def staging_name(self):
+        return self._safe_get('gitflow.branch.staging')
+
     def develop_name(self):
         return self._safe_get('gitflow.branch.develop')
 
@@ -332,7 +336,6 @@ Git config '%s' missing, please fill it in by executing
     def current_branch(self):
         return self.repo.head.ref.name
 
-    @requires_initialized
     def is_circleci_enabled(self):
         return self.get('gitflow.circleci.enabled').lower() != 'n'
 
@@ -407,6 +410,10 @@ Git config '%s' missing, please fill it in by executing
     @requires_repo
     def develop(self):
         return self.repo.branches[self.develop_name()]
+
+    @requires_repo
+    def staging(self):
+        return self.repo.branches[self.staging_name()]
 
     @requires_repo
     def master(self):
