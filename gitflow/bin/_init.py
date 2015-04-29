@@ -62,8 +62,8 @@ class GitFlow(CoreGitFlow):
     def has_master_configured(self):
         return self._has_configured(self.master)
 
-    def has_staging_configured(self):
-        return self._has_configured(self.staging)
+    def has_client_configured(self):
+        return self._has_configured(self.client)
 
     def has_develop_configured(self):
         return self._has_configured(self.develop)
@@ -90,7 +90,9 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
         should_check_existence = False
         default_suggestion = default_name
     else:
-        should_check_existence = True
+        # Check unless we are picking up the client branch.
+        # That one is created automatically on deploy, it doesn't have to exist.
+        should_check_existence = name is 'client'
         print
         print "Which branch should be used for %s?" % desc1
         for b in local_branches:
@@ -215,11 +217,11 @@ def run_default(args):
     _ask_name(args, 'circleci.enabled',
             'Enable Circle CI integration [Y/n]')
     if gitflow.is_circleci_enabled():
-        if gitflow.has_staging_configured() and not args.force:
-            staging_branch = gitflow.staging_branch()
+        if gitflow.has_client_configured() and not args.force:
+            client_branch = gitflow.client_branch()
         else:
-            staging_branch = _ask_branch(args,
-                'staging',
+            client_branch = _ask_branch(args,
+                'client',
                 'release client acceptance',
                 'release client acceptance',
                 ['client', 'staging'])

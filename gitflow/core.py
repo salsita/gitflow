@@ -108,8 +108,8 @@ class GitFlow(object):
         self.managers = self._discover_branch_managers()
         self.defaults = {
             'gitflow.branch.master': 'master',
-            'gitflow.branch.staging': 'client',
             'gitflow.branch.develop': 'develop',
+            'gitflow.branch.client': 'client',
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
@@ -256,7 +256,7 @@ Git config '%s' missing, please fill it in by executing
         ]
         if any([not self.is_set(key) for key in keys]):
             return False
-        if self.is_circleci_enabled() and not self.is_set('gitflow.branch.staging'):
+        if self.is_circleci_enabled() and not self.is_set('gitflow.branch.client'):
             return False
         return True
 
@@ -316,14 +316,11 @@ Git config '%s' missing, please fill it in by executing
     def master_name(self):
         return self._safe_get('gitflow.branch.master')
 
-    def staging_name(self):
-        return self._safe_get('gitflow.branch.staging')
-
     def develop_name(self):
         return self._safe_get('gitflow.branch.develop')
 
     def client_name(self):
-        return 'client'
+        return self._safe_get('gitflow.branch.client')
 
     def client_exists(self):
         client = self.client_name()
@@ -417,8 +414,8 @@ Git config '%s' missing, please fill it in by executing
         return self.repo.branches[self.develop_name()]
 
     @requires_repo
-    def staging(self):
-        return self.repo.branches[self.staging_name()]
+    def client(self):
+        return self.repo.branches[self.client_name()]
 
     @requires_repo
     def master(self):
