@@ -109,6 +109,7 @@ class GitFlow(object):
         self.defaults = {
             'gitflow.branch.master': 'master',
             'gitflow.branch.develop': 'develop',
+            'gitflow.branch.client': 'client',
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
@@ -242,17 +243,22 @@ Git config '%s' missing, please fill it in by executing
         return self
 
     def is_initialized(self):
-        return (self.repo and
-                self.is_set('gitflow.branch.master') and
-                self.is_set('gitflow.branch.develop') and
-                self.is_set('gitflow.prefix.feature') and
-                self.is_set('gitflow.prefix.release') and
-                self.is_set('gitflow.prefix.hotfix') and
-                self.is_set('gitflow.prefix.support') and
-                self.is_set('gitflow.prefix.versiontag') and
-                self.is_set('gitflow.release.versionmatcher') and
-                self.is_set('gitflow.circleci.enabled') and
-                self.is_set('gitflow.pagination'))
+        keys = [
+            'gitflow.branch.master',
+            'gitflow.branch.develop',
+            'gitflow.prefix.feature',
+            'gitflow.prefix.release',
+            'gitflow.prefix.hotfix',
+            'gitflow.prefix.support',
+            'gitflow.prefix.versiontag',
+            'gitflow.release.versionmatcher',
+            'gitflow.pagination'
+        ]
+        if any([not self.is_set(key) for key in keys]):
+            return False
+        if self.is_circleci_enabled() and not self.is_set('gitflow.branch.client'):
+            return False
+        return True
 
     def _parse_setting(self, setting):
         groups = setting.split('.', 2)
@@ -314,7 +320,7 @@ Git config '%s' missing, please fill it in by executing
         return self._safe_get('gitflow.branch.develop')
 
     def client_name(self):
-        return 'client'
+        return self._safe_get('gitflow.branch.client')
 
     def client_exists(self):
         client = self.client_name()
@@ -332,7 +338,6 @@ Git config '%s' missing, please fill it in by executing
     def current_branch(self):
         return self.repo.head.ref.name
 
-    @requires_initialized
     def is_circleci_enabled(self):
         return self.get('gitflow.circleci.enabled').lower() != 'n'
 
@@ -407,6 +412,10 @@ Git config '%s' missing, please fill it in by executing
     @requires_repo
     def develop(self):
         return self.repo.branches[self.develop_name()]
+
+    @requires_repo
+    def client(self):
+        return self.repo.branches[self.client_name()]
 
     @requires_repo
     def master(self):
