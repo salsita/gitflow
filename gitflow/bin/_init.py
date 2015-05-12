@@ -107,7 +107,7 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
                 # The client branch is created automatically by GitFlow later.
                 default_suggestion = default_name
             else:
-                default_suggesting = ''
+                default_suggestion = ''
 
     if args.use_defaults and default_suggestion:
         print "Branch name for %s:" % desc2, default_suggestion
