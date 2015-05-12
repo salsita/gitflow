@@ -79,6 +79,7 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
     # 2. Some branches do already exist
     #    We will disallow creation of new master/develop branches and
     #    rather allow to use existing branches for git-flow.
+    askingForClient = name is 'client'
     name = 'gitflow.branch.' + name
     default_name = gitflow.get_default(name)
     local_branches = [b
@@ -92,7 +93,7 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
     else:
         # Check unless we are picking up the client branch.
         # That one is created automatically on deploy, it doesn't have to exist.
-        should_check_existence = name is 'client'
+        should_check_existence = not askingForClient
         print
         print "Which branch should be used for %s?" % desc1
         for b in local_branches:
@@ -101,7 +102,12 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
             if default_suggestion in local_branches:
                 break
         else:
-            default_suggestion = ''
+            if askingForClient:
+                # Show the default suggesting even though the local branch doesn't exist.
+                # The client branch is created automatically by GitFlow later.
+                default_suggestion = default_name
+            else:
+                default_suggesting = ''
 
     if args.use_defaults and default_suggestion:
         print "Branch name for %s:" % desc2, default_suggestion
@@ -186,6 +192,10 @@ def run_default(args):
     if args.use_defaults:
         warn("Using default branch names.")
 
+    #-- ask about Circle CI
+    _ask_name(args, 'circleci.enabled',
+            'Enable Circle CI integration [Y/n]')
+
     _ask_name(args, "origin", "Remote name to use as origin in git flow")
  
     # Make sure that origin uses SSH protocol for communication,
@@ -213,9 +223,7 @@ def run_default(args):
             ['develop', 'int', 'integration', 'master'],
             filter=[master_branch])
 
-    #-- Circle CI
-    _ask_name(args, 'circleci.enabled',
-            'Enable Circle CI integration [Y/n]')
+    #-- ask for the client branch in case CircleCI is enabled.
     if gitflow.is_circleci_enabled():
         if gitflow.has_client_configured() and not args.force:
             client_branch = gitflow.client_branch()
