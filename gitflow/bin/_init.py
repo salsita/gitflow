@@ -62,8 +62,8 @@ class GitFlow(CoreGitFlow):
     def has_master_configured(self):
         return self._has_configured(self.master)
 
-    def has_client_configured(self):
-        return self._has_configured(self.client)
+    def has_stage_configured(self):
+        return self._has_configured(self.stage)
 
     def has_develop_configured(self):
         return self._has_configured(self.develop)
@@ -79,7 +79,7 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
     # 2. Some branches do already exist
     #    We will disallow creation of new master/develop branches and
     #    rather allow to use existing branches for git-flow.
-    askingForClient = name is 'client'
+    askingForStage = name is 'stage'
     name = 'gitflow.branch.' + name
     default_name = gitflow.get_default(name)
     local_branches = [b
@@ -91,9 +91,9 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
         should_check_existence = False
         default_suggestion = default_name
     else:
-        # Check unless we are picking up the client branch.
+        # Check unless we are picking up the stage branch.
         # That one is created automatically on deploy, it doesn't have to exist.
-        should_check_existence = not askingForClient
+        should_check_existence = not askingForStage
         print
         print "Which branch should be used for %s?" % desc1
         for b in local_branches:
@@ -102,9 +102,9 @@ def _ask_branch(args, name, desc1, desc2, suggestions, filter=[]):
             if default_suggestion in local_branches:
                 break
         else:
-            if askingForClient:
+            if askingForStage:
                 # Show the default suggesting even though the local branch doesn't exist.
-                # The client branch is created automatically by GitFlow later.
+                # The stage branch is created automatically by GitFlow later.
                 default_suggestion = default_name
             else:
                 default_suggestion = ''
@@ -223,16 +223,16 @@ def run_default(args):
             ['develop', 'int', 'integration', 'master'],
             filter=[master_branch])
 
-    #-- ask for the client branch in case CircleCI is enabled.
+    #-- ask for the staging branch in case CircleCI is enabled.
     if gitflow.is_circleci_enabled():
-        if gitflow.has_client_configured() and not args.force:
-            client_branch = gitflow.client_branch()
+        if gitflow.has_stage_configured() and not args.force:
+            stage_branch = gitflow.stage_branch()
         else:
-            client_branch = _ask_branch(args,
-                'client',
+            stage_branch = _ask_branch(args,
+                'stage',
                 'release client acceptance',
                 'release client acceptance',
-                ['client', 'staging'])
+                ['stage'])
 
     if not gitflow.is_initialized() or args.force:
         print

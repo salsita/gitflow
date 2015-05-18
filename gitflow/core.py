@@ -109,7 +109,7 @@ class GitFlow(object):
         self.defaults = {
             'gitflow.branch.master': 'master',
             'gitflow.branch.develop': 'develop',
-            'gitflow.branch.client': 'client',
+            'gitflow.branch.stage': 'stage',
             'gitflow.prefix.versiontag': '',
             'gitflow.origin': 'origin',
             'gitflow.release.versionmatcher': '[0-9]+([.][0-9]+){2}',
@@ -256,7 +256,7 @@ Git config '%s' missing, please fill it in by executing
         ]
         if any([not self.is_set(key) for key in keys]):
             return False
-        if self.is_circleci_enabled() and not self.is_set('gitflow.branch.client'):
+        if self.is_circleci_enabled() and not self.is_set('gitflow.branch.stage'):
             return False
         return True
 
@@ -319,13 +319,13 @@ Git config '%s' missing, please fill it in by executing
     def develop_name(self):
         return self._safe_get('gitflow.branch.develop')
 
-    def client_name(self):
-        return self._safe_get('gitflow.branch.client')
+    def stage_name(self):
+        return self._safe_get('gitflow.branch.stage')
 
-    def client_exists(self):
-        client = self.client_name()
-        return client in self.branch_names() or \
-               self.origin_name(client) in self.branch_names(remote=True)
+    def stage_exists(self):
+        branch = self.stage_name()
+        return branch in self.branch_names() or \
+               self.origin_name(branch) in self.branch_names(remote=True)
 
     def origin_name(self, name=None):
         origin = self.get('gitflow.origin', self.defaults['gitflow.origin'])
@@ -414,8 +414,8 @@ Git config '%s' missing, please fill it in by executing
         return self.repo.branches[self.develop_name()]
 
     @requires_repo
-    def client(self):
-        return self.repo.branches[self.client_name()]
+    def stage(self):
+        return self.repo.branches[self.stage_name()]
 
     @requires_repo
     def master(self):
