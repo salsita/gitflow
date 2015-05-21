@@ -742,7 +742,7 @@ class ReleaseCommand(GitFlowCommand):
 
         # Trigger the deployment job
         if not args.skip_deployment:
-            args.environ = 'client'
+            args.environ = 'stage'
             args.no_check = True
             DeployCommand.run_release(args)
 
@@ -1218,10 +1218,10 @@ class DeployCommand(GitFlowCommand):
 
         # Check the environ argument.
         branch = GitFlow().managers['release'].full_name(args.version)
-        if args.environ not in ('qa', 'client'):
+        if args.environ not in ('qa', 'stage'):
             raise DeploymentRequestError(branch, args.environ)
 
-        if args.environ == 'client' and not args.no_check:
+        if args.environ == 'stage' and not args.no_check:
             #+++ Check if all stories were accepted by the client
             pt_release = pivotal.Release(args.version)
             print('Checking Pivotal Tracker stories ... ')
@@ -1251,7 +1251,7 @@ class DeployCommand(GitFlowCommand):
     @staticmethod
     def _run_deploy(args):
         assert args.environ
-        if args.environ in ('qa', 'client'):
+        if args.environ in ('qa', 'stage'):
             assert args.version
 
         gitflow = GitFlow()
@@ -1263,10 +1263,10 @@ class DeployCommand(GitFlowCommand):
         }
 
         if gitflow.is_circleci_enabled():
-            branches['client'] = gitflow.client_name()
+            branches['stage'] = gitflow.stage_name()
             _deploy_circleci(gitflow, branches, args.environ)
         else:
-            branches['client'] = gitflow.managers['release'].full_name(args.version)
+            branches['stage'] = gitflow.managers['release'].full_name(args.version)
             _deploy_jenkins(gitflow, branches, args.environ)
 
 
@@ -1300,18 +1300,18 @@ def _deploy_circleci(gitflow, branches, environ):
     sys.stdout.write('Pushing branch for CircleCI  ... ')
     sys.stdout.flush()
 
-    # Make sure that the client branch is pointing to the right place.
-    if environ == 'client':
+    # Make sure that the staging branch is pointing to the right place.
+    if environ == 'stage':
         release = branches['qa']
         gitflow.must_be_uptodate(release)
-        if gitflow.client_exists():
+        if gitflow.stage_exists():
             current = gitflow.current_branch()
-            git.checkout(gitflow.client_name())
+            git.checkout(gitflow.stage_name())
             # Use --keep to make sure that local modification are not discarded.
             git.reset('--keep', release)
             git.checkout(current)
         else:
-            git.branch(gitflow.client_name(), release)
+            git.branch(gitflow.stage_name(), release)
 
     # Push the relevant branch to deploy it.
     branch = branches[environ]

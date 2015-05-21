@@ -111,6 +111,11 @@ and how you would like your prefixes be named. You may simply press
 Return on any of those questions to accept the (sane) default
 suggestions.
 
+Please make sure that the prefixes end with ``/`` when that is desired,
+because otherwise you may get some weird errors. For example, choosing prefix
+``release-v2`` and staging version ``0.3.0`` would lead to GF looking for branch
+called ``release-v20.3.0``.
+
 The ``-d`` flag will accept all defaults.
 
 The ``-f`` flag will make gitflow overwrite existing settings.
