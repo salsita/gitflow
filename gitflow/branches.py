@@ -19,6 +19,13 @@ from gitflow.exceptions import (NoSuchBranchError, BranchExistsError,
 __copyright__ = "2010-2011 Vincent Driessen; 2012 Hartmut Goebel"
 __license__ = "BSD"
 
+
+def ensure_trailing_slash(s):
+    if s.endswith("/"):
+        return s
+    return s + "/"
+
+
 class BranchManager(object):
     """
     Initializes an instance of :class:`BranchManager`.  A branch
@@ -37,11 +44,12 @@ class BranchManager(object):
 
     def _get_prefix(self):
         if self._prefix is not None:
-            return self._prefix
+            return ensure_trailing_slash(self._prefix)
         try:
-            return self.gitflow.get_prefix(self.identifier)
+            return ensure_trailing_slash(self.gitflow.get_prefix(self.identifier))
         except:
-            return self.DEFAULT_PREFIX
+            return ensure_trailing_slash(self.DEFAULT_PREFIX)
+
     def _set_prefix(self, value): self._prefix = value
     prefix = property(_get_prefix, _set_prefix)
 
